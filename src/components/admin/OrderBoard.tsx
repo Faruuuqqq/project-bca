@@ -1,0 +1,127 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Check, Clock, Utensils, ShoppingBag, Banknote, QrCode } from 'lucide-react'
+import { completeOrder } from '@/actions/payment'
+import { toast } from 'sonner'
+
+export function OrderBoard({ initialOrders }: { initialOrders: any[] }) {
+  const [orders, setOrders] = useState(initialOrders)
+  const supabase = createClient()
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-orders')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        async (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const { data } = await supabase
+              .from('orders')
+              .select('*, order_items(*)')
+              .eq('id', payload.new.id)
+              .single()
+            if (data) setOrders(prev => [...prev, data]) // Add to end (Western order: newer at end of paid list, but we filter paid)
+          } else if (payload.eventType === 'UPDATE') {
+            if (payload.new.order_status === 'completed') {
+              setOrders(prev => prev.filter(o => o.id !== payload.new.id))
+            } else {
+              setOrders(prev => prev.map(o => o.id === payload.new.id ? { ...o, ...payload.new } : o))
+            }
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [supabase])
+
+  // Paid orders only for Kitchen Display, sorted by oldest first (left-to-right reading)
+  const activeOrders = orders
+    .filter(o => o.payment_status === 'paid' && o.order_status !== 'completed')
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+
+  const handleComplete = async (orderId: string) => {
+    try {
+      await completeOrder(orderId)
+      toast.success('Pesanan selesai')
+    } catch (error: any) {
+      toast.error(error.message)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between bg-white p-6 rounded-2xl shadow-sm border">
+        <div>
+          <h3 className="text-xl font-black text-[#3d2b1f] flex items-center gap-2">
+            <Utensils className="text-[#d42c2c]" /> ANTREAN DAPUR
+          </h3>
+          <p className="text-xs text-zinc-400 font-medium">Pesanan yang sudah dibayar dan siap dimasak.</p>
+        </div>
+        <Badge className="bg-[#d42c2c] text-lg px-4 py-1">{activeOrders.length} Pesanan</Badge>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {activeOrders.map((order) => (
+          <Card 
+            key={order.id} 
+            className="border-none shadow-xl bg-white overflow-hidden flex flex-col h-full"
+          >
+            <div className="bg-[#3d2b1f] p-4 text-white flex justify-between items-center">
+              <span className="text-4xl font-black tracking-tighter">#{order.queue_number}</span>
+              <div className="text-right">
+                <p className="text-[10px] font-bold opacity-60 uppercase">{order.order_type}</p>
+                <p className="text-xs font-black truncate max-w-[120px]">{order.customer_name || 'Pelanggan'}</p>
+              </div>
+            </div>
+            
+            <CardContent className="p-5 flex-1 flex flex-col">
+              <div className="flex-1 space-y-4">
+                <div className="space-y-2">
+                  {order.order_items?.map((item: any) => (
+                    <div key={item.id} className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="font-black text-[#3d2b1f]">{item.quantity}x {item.menu_name}</span>
+                      </div>
+                      {/* Nested options display if needed here */}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-zinc-100 flex items-center justify-between">
+                <div className="flex items-center text-[10px] text-zinc-400 font-bold">
+                  <Clock size={12} className="mr-1" />
+                  {new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                </div>
+                <Button 
+                  size="sm" 
+                  className="bg-green-600 hover:bg-green-700 rounded-xl px-6 font-bold shadow-lg shadow-green-200"
+                  onClick={() => handleComplete(order.id)}
+                >
+                  SIAP ✓
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        {activeOrders.length === 0 && (
+          <div className="col-span-full py-20 flex flex-col items-center justify-center text-zinc-300">
+            <Clock size={64} className="mb-4 opacity-20" />
+            <p className="font-bold text-lg">Belum ada pesanan aktif</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
