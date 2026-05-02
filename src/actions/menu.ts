@@ -58,10 +58,15 @@ export async function addMenu(data: {
 
 export async function updateMenu(id: string, data: any) {
   const supabase = await createClient()
+  
+  // Extract options if any to handle separately (future)
+  const { menu_options, categories, ...cleanData } = data
+
   const { error } = await supabase
     .from('menus')
-    .update(data)
+    .update(cleanData)
     .eq('id', id)
+    
   if (error) throw new Error(error.message)
   revalidateTag('menus', 'page')
   return { success: true }
@@ -91,8 +96,6 @@ export async function toggleSoldOut(menuId: string, value: boolean) {
     throw new Error('Gagal memperbarui status menu')
   }
 
-  // Revalidate the menus tag to update kiosk cache if using unstable_cache
   revalidateTag('menus', 'page')
-
   return { success: true }
 }

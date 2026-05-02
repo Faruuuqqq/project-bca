@@ -2,11 +2,12 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'SOK Ayam Kalintang',
-    short_name: 'AyamKalintang',
-    description: 'Self-Order Kiosk for Ayam Kalintang',
+    name: 'Ayam Kalintang - Self Order Kiosk',
+    short_name: 'Ayam Kalintang',
+    description: 'Sistem Pesan Mandiri Ayam Kalintang',
     start_url: '/',
     display: 'standalone',
+    orientation: 'portrait',
     background_color: '#f8f1e7',
     theme_color: '#d42c2c',
     icons: [
@@ -14,11 +15,13 @@ export default function manifest(): MetadataRoute.Manifest {
         src: '/icon-192x192.png',
         sizes: '192x192',
         type: 'image/png',
+        purpose: 'maskable'
       },
       {
         src: '/icon-512x512.png',
         sizes: '512x512',
         type: 'image/png',
+        purpose: 'any'
       },
     ],
   }

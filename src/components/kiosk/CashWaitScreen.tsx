@@ -77,15 +77,15 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#f8f1e7] lg:flex-row overflow-hidden">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#f8f1e7] md:flex-row overflow-y-auto md:overflow-hidden">
       {/* Left Side: Customer Info */}
-      <div className="flex-1 flex flex-col overflow-y-auto">
-        <div className="bg-[#d42c2c] p-6 text-white text-center">
+      <div className="flex-1 flex flex-col overflow-y-auto border-b md:border-b-0 md:border-r border-zinc-100">
+        <div className="bg-[#d42c2c] p-6 text-white text-center shrink-0">
           <h2 className="text-2xl font-bold italic tracking-wider uppercase">Pembayaran Tunai</h2>
           <p className="text-sm opacity-80">Silakan ke kasir untuk membayar</p>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[500px]">
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[600px] md:min-h-0">
           <div className="mb-6 p-6 bg-white rounded-full shadow-lg">
             <Banknote size={64} className="text-[#d42c2c]" />
           </div>
@@ -132,7 +132,7 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
       </div>
 
       {/* Right Side: Cashier PIN Box */}
-      <div className="w-full lg:w-[400px] bg-white border-l shadow-2xl p-8 flex flex-col justify-center">
+      <div className="w-full md:w-[350px] lg:w-[450px] bg-white shadow-2xl p-8 flex flex-col justify-center shrink-0">
         <div className="space-y-8">
           <div className="text-center space-y-3">
             <div className="mx-auto h-16 w-16 rounded-[1.5rem] bg-zinc-50 flex items-center justify-center text-zinc-400 border border-zinc-100">

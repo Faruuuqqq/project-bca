@@ -115,8 +115,8 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[90vh] rounded-t-[2rem] p-0 flex flex-col">
-        <SheetHeader className="p-6 pb-2">
+      <SheetContent side="bottom" className="h-[90vh] rounded-t-[2rem] p-0 flex flex-col bg-white border-none shadow-2xl overflow-hidden">
+        <SheetHeader className="p-6 pb-2 bg-white shrink-0">
           <SheetTitle className="text-2xl font-bold text-[#3d2b1f]">{menu.name}</SheetTitle>
           <p className="text-sm text-zinc-500">{menu.description}</p>
         </SheetHeader>

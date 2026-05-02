@@ -11,7 +11,6 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -23,7 +22,6 @@ export default function AdminLayout({
   const pathname = usePathname()
   const [isCollapsed, setIsCollapsed] = useState(false)
 
-  // Don't show sidebar on login page
   if (pathname === '/admin/login') {
     return <>{children}</>
   }
@@ -40,14 +38,14 @@ export default function AdminLayout({
       {/* Sidebar */}
       <aside 
         className={cn(
-          "fixed left-0 top-0 bottom-0 z-20 flex flex-col bg-[#3d2b1f] text-white transition-all duration-300",
+          "fixed left-0 top-0 bottom-0 z-20 flex flex-col bg-brand-primary text-white transition-all duration-300 shadow-2xl",
           isCollapsed ? "w-20" : "w-64"
         )}
       >
         <div className="flex h-20 items-center justify-between px-6 border-b border-white/10">
           {!isCollapsed && (
-            <h1 className="text-lg font-black tracking-tighter text-[#d42c2c]">
-              AYAM KALINTANG
+            <h1 className="text-lg font-black tracking-tighter text-brand-secondary uppercase">
+              Kalintang
             </h1>
           )}
           <button 
@@ -66,8 +64,8 @@ export default function AdminLayout({
                 <div className={cn(
                   "flex items-center gap-4 rounded-xl px-4 py-3 font-bold transition-all duration-200",
                   isActive 
-                    ? "bg-[#d42c2c] text-white shadow-lg" 
-                    : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                    ? "bg-brand-secondary text-brand-primary shadow-lg" 
+                    : "text-blue-100/60 hover:bg-white/5 hover:text-white"
                 )}>
                   <item.icon size={24} className="shrink-0" />
                   {!isCollapsed && <span>{item.name}</span>}
@@ -80,7 +78,7 @@ export default function AdminLayout({
         <div className="p-4 border-t border-white/10">
           <form action="/auth/signout" method="post">
             <button className={cn(
-              "flex w-full items-center gap-4 rounded-xl px-4 py-3 font-bold text-zinc-400 hover:bg-red-500/10 hover:text-red-500 transition-all",
+              "flex w-full items-center gap-4 rounded-xl px-4 py-3 font-bold text-blue-100/40 hover:bg-red-500/10 hover:text-red-400 transition-all",
               isCollapsed && "justify-center"
             )}>
               <LogOut size={24} className="shrink-0" />
