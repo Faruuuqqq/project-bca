@@ -2,13 +2,40 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
-import { Check, Clock, Utensils, ShoppingBag, Banknote, QrCode } from 'lucide-react'
+import { Clock, Utensils, Timer } from 'lucide-react'
 import { completeOrder } from '@/actions/payment'
 import { toast } from 'sonner'
+
+function ElapsedTimer({ startTime }: { startTime: string }) {
+  const [elapsed, setElapsed] = useState('')
+
+  useEffect(() => {
+    const calculate = () => {
+      const start = new Date(startTime).getTime()
+      const now = new Date().getTime()
+      const diffInSeconds = Math.floor((now - start) / 1000)
+      
+      const minutes = Math.floor(diffInSeconds / 60)
+      const seconds = diffInSeconds % 60
+      
+      setElapsed(`${minutes}m ${seconds}s`)
+    }
+
+    calculate()
+    const interval = setInterval(calculate, 1000)
+    return () => clearInterval(interval)
+  }, [startTime])
+
+  return (
+    <div className="flex items-center gap-1.5 px-3 py-1 bg-zinc-100 rounded-lg text-[#3d2b1f] font-black text-xs">
+      <Timer size={14} className="text-[#d42c2c]" />
+      <span>{elapsed}</span>
+    </div>
+  )
+}
 
 export function OrderBoard({ initialOrders }: { initialOrders: any[] }) {
   const [orders, setOrders] = useState(initialOrders)
@@ -27,7 +54,7 @@ export function OrderBoard({ initialOrders }: { initialOrders: any[] }) {
               .select('*, order_items(*)')
               .eq('id', payload.new.id)
               .single()
-            if (data) setOrders(prev => [...prev, data]) // Add to end (Western order: newer at end of paid list, but we filter paid)
+            if (data) setOrders(prev => [...prev, data]) 
           } else if (payload.eventType === 'UPDATE') {
             if (payload.new.order_status === 'completed') {
               setOrders(prev => prev.filter(o => o.id !== payload.new.id))
@@ -44,7 +71,6 @@ export function OrderBoard({ initialOrders }: { initialOrders: any[] }) {
     }
   }, [supabase])
 
-  // Paid orders only for Kitchen Display, sorted by oldest first (left-to-right reading)
   const activeOrders = orders
     .filter(o => o.payment_status === 'paid' && o.order_status !== 'completed')
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
@@ -65,7 +91,7 @@ export function OrderBoard({ initialOrders }: { initialOrders: any[] }) {
           <h3 className="text-xl font-black text-[#3d2b1f] flex items-center gap-2">
             <Utensils className="text-[#d42c2c]" /> ANTREAN DAPUR
           </h3>
-          <p className="text-xs text-zinc-400 font-medium">Pesanan yang sudah dibayar dan siap dimasak.</p>
+          <p className="text-xs text-zinc-400 font-medium">Monitor durasi masak secara realtime.</p>
         </div>
         <Badge className="bg-[#d42c2c] text-lg px-4 py-1">{activeOrders.length} Pesanan</Badge>
       </div>
@@ -86,26 +112,30 @@ export function OrderBoard({ initialOrders }: { initialOrders: any[] }) {
             
             <CardContent className="p-5 flex-1 flex flex-col">
               <div className="flex-1 space-y-4">
-                <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <ElapsedTimer startTime={order.created_at} />
+                  <div className="flex items-center text-[10px] text-zinc-400 font-bold">
+                    <Clock size={12} className="mr-1" />
+                    {new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2">
                   {order.order_items?.map((item: any) => (
-                    <div key={item.id} className="space-y-1">
+                    <div key={item.id} className="space-y-1 bg-zinc-50 p-2 rounded-xl border border-zinc-100">
                       <div className="flex justify-between text-sm">
                         <span className="font-black text-[#3d2b1f]">{item.quantity}x {item.menu_name}</span>
                       </div>
-                      {/* Nested options display if needed here */}
+                      {/* Opsi kustomisasi bisa ditambahkan di sini */}
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-zinc-100 flex items-center justify-between">
-                <div className="flex items-center text-[10px] text-zinc-400 font-bold">
-                  <Clock size={12} className="mr-1" />
-                  {new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                </div>
+              <div className="mt-6 pt-4 border-t border-zinc-100 flex items-center justify-end">
                 <Button 
                   size="sm" 
-                  className="bg-green-600 hover:bg-green-700 rounded-xl px-6 font-bold shadow-lg shadow-green-200"
+                  className="bg-green-600 hover:bg-green-700 rounded-xl px-8 py-6 font-black text-lg shadow-lg shadow-green-100 active:scale-95 transition-all"
                   onClick={() => handleComplete(order.id)}
                 >
                   SIAP ✓
