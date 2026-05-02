@@ -42,6 +42,11 @@ The project should follow a `src/` directory structure:
 - **Surgical Updates:** Use `replace` for precise code modifications.
 - **Realtime focus:** Leverage Supabase Realtime for order updates and menu availability.
 - **Visuals:** Follow the "Ayam Kalintang" branding (Brand colors, touch-friendly UI).
+- **Conventional Commits:** All git commits MUST follow the [Conventional Commits specification](https://www.conventionalcommits.org/).
+  - `feat:` for new features.
+  - `fix:` for bug fixes.
+  - `build:`, `chore:`, `ci:`, `docs:`, `style:`, `refactor:`, `perf:`, `test:` are also used.
+  - Use `!` or `BREAKING CHANGE:` for major changes.
 
 ## Instructions for Gemini CLI
 - **Phase-based progress:** Always check which phase we are in. Currently: **Phase 0**.
