@@ -15,12 +15,7 @@ export default async function MenusPage() {
     .order('created_at', { ascending: false })
 
   return (
-    <div className="p-8 space-y-8">
-      <div>
-        <h2 className="text-3xl font-black text-[#3d2b1f]">Editor Menu</h2>
-        <p className="text-zinc-500">Kelola daftar makanan, harga, dan kategori restoran.</p>
-      </div>
-
+    <div className="p-8">
       <MenuManager 
         initialMenus={menus || []} 
         initialCategories={categories || []} 

@@ -26,7 +26,7 @@ interface MenuGridProps {
 export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
   const router = useRouter()
   const supabase = createClient()
-  const { items, orderType } = useCartStore()
+  const { items, orderType, addItem } = useCartStore()
   
   const [menus, setMenus] = useState(initialMenus)
   const [selectedCategory, setSelectedCategory] = useState<string>(
@@ -37,6 +37,7 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
   const [isCartSheetOpen, setIsCartSheetOpen] = useState(false)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
 
+  // Payment states
   const [isCreatingOrder, setIsCreatingOrder] = useState(false)
   const [orderData, setOrderData] = useState<any>(null)
   const [paymentStep, setPaymentStep] = useState<'none' | 'qris' | 'cash'>('none')
@@ -44,6 +45,7 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
   const totalPrice = items.reduce((sum, item) => sum + item.subtotal, 0)
 
+  // Realtime subscription for sold-out and stock sync
   useEffect(() => {
     const channel = supabase
       .channel('menu-updates')
@@ -71,8 +73,23 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
 
   const handleMenuClick = (menu: any) => {
     if (menu.is_sold_out || menu.current_stock <= 0) return
-    setSelectedMenu(menu)
-    setIsCustomSheetOpen(true)
+
+    // If menu has no customization options, add directly to cart
+    if (!menu.menu_options || menu.menu_options.length === 0) {
+      addItem({
+        menuId: menu.id,
+        name: menu.name,
+        price: Number(menu.price),
+        quantity: 1,
+        subtotal: Number(menu.price),
+        options: []
+      })
+      toast.success(`${menu.name} ditambahkan ke keranjang`)
+    } else {
+      // Otherwise, open customization dialog
+      setSelectedMenu(menu)
+      setIsCustomSheetOpen(true)
+    }
   }
 
   const handleCheckout = () => {
@@ -93,7 +110,10 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
       })
 
       if (result.success) {
-        setOrderData({ ...result, customerName })
+        setOrderData({
+          ...result,
+          customerName
+        })
         setPaymentStep(method === 'QRIS' ? 'qris' : 'cash')
       }
     } catch (error: any) {

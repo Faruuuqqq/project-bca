@@ -45,7 +45,7 @@ export function PaymentMethodModal({ open, onOpenChange, onSelect }: PaymentMeth
       onOpenChange(val)
       if (!val) reset()
     }}>
-      <DialogContent className="sm:max-w-md rounded-[2rem] bg-white border-none shadow-2xl p-0 overflow-hidden">
+      <DialogContent showCloseButton={false} className="sm:max-w-md rounded-[2rem] bg-white border-none shadow-2xl p-0 overflow-hidden">
         <DialogHeader className="p-8 pb-4 flex flex-row items-center justify-between border-b bg-zinc-50/50">
           <DialogTitle className="text-xl font-black text-[#3d2b1f] uppercase tracking-tight">
             {step === 'method' ? 'Pilih Metode Bayar' : 'Data Pelanggan'}
