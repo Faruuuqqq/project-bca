@@ -35,8 +35,8 @@ export function CartSheet({ open, onOpenChange, onCheckout }: CartSheetProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[90vh] rounded-t-[2rem] p-0 flex flex-col">
-        <SheetHeader className="p-6 border-b">
+      <SheetContent side="bottom" className="h-[90vh] rounded-t-[2rem] p-0 flex flex-col bg-white border-none shadow-2xl overflow-hidden">
+        <SheetHeader className="p-6 border-b bg-white shrink-0">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-2xl font-bold flex items-center gap-2">
               <ShoppingCart className="text-[#d42c2c]" />
