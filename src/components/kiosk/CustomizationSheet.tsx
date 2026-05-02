@@ -4,19 +4,19 @@ import { useState, useEffect } from 'react'
 import { Menu, MenuOption } from '@/types/database'
 import { useCartStore } from '@/store/cart'
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from '@/components/ui/sheet'
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Minus } from 'lucide-react'
+import { Plus, Minus, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface CustomizationSheetProps {
@@ -114,24 +114,29 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[90vh] rounded-t-[2rem] p-0 flex flex-col bg-white border-none shadow-2xl overflow-hidden">
-        <SheetHeader className="p-6 pb-2 bg-white shrink-0">
-          <SheetTitle className="text-2xl font-bold text-[#3d2b1f]">{menu.name}</SheetTitle>
-          <p className="text-sm text-zinc-500">{menu.description}</p>
-        </SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[90vw] md:max-w-2xl rounded-[2rem] p-0 flex flex-col bg-white border-none shadow-2xl overflow-hidden max-h-[85vh]">
+        <DialogHeader className="p-6 pb-4 bg-white shrink-0 border-b flex flex-row items-center justify-between">
+          <div className="space-y-1">
+            <DialogTitle className="text-2xl font-black text-[#3d2b1f] uppercase tracking-tight">{menu.name}</DialogTitle>
+            <p className="text-xs text-zinc-400 font-medium italic">{menu.description}</p>
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="rounded-full">
+            <X size={24} className="text-zinc-400" />
+          </Button>
+        </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6">
-          <div className="space-y-8 pb-32">
+        <ScrollArea className="flex-1 overflow-y-auto">
+          <div className="p-6 space-y-8 pb-32">
             {menu.menu_options?.map((opt: any) => (
               <div key={opt.id} className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-[#3d2b1f]">
+                  <h3 className="text-lg font-black text-[#3d2b1f] uppercase tracking-tight">
                     {opt.name}
                     {opt.is_required && <span className="text-[#d42c2c] ml-1">*</span>}
                   </h3>
                   {opt.is_required && (
-                    <Badge variant="outline" className="text-[10px] uppercase">Wajib</Badge>
+                    <Badge variant="outline" className="text-[10px] uppercase font-black border-red-200 text-red-500 bg-red-50">Wajib</Badge>
                   )}
                 </div>
 
@@ -142,13 +147,13 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
                     className="space-y-3"
                   >
                     {opt.menu_option_values?.map((val: any) => (
-                      <div key={val.id} className="flex items-center justify-between rounded-xl border p-4 transition-colors has-[:checked]:border-[#d42c2c] has-[:checked]:bg-[#d42c2c]/5">
+                      <div key={val.id} className="flex items-center justify-between rounded-2xl border-2 p-4 transition-all has-[:checked]:border-brand-primary has-[:checked]:bg-brand-primary/5 cursor-pointer hover:bg-zinc-50">
                         <div className="flex items-center gap-3">
-                          <RadioGroupItem value={val.id} id={val.id} className="border-2 text-[#d42c2c]" />
-                          <Label htmlFor={val.id} className="font-medium cursor-pointer">{val.label}</Label>
+                          <RadioGroupItem value={val.id} id={val.id} className="border-2 text-brand-primary" />
+                          <Label htmlFor={val.id} className="font-bold text-[#3d2b1f] cursor-pointer">{val.label}</Label>
                         </div>
                         {Number(val.extra_price) > 0 && (
-                          <span className="text-sm font-bold text-[#d42c2c]">
+                          <span className="text-sm font-black text-brand-primary">
                             +Rp {new Intl.NumberFormat('id-ID').format(val.extra_price)}
                           </span>
                         )}
@@ -158,18 +163,18 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
                 ) : (
                   <div className="space-y-3">
                     {opt.menu_option_values?.map((val: any) => (
-                      <div key={val.id} className="flex items-center justify-between rounded-xl border p-4 transition-colors has-[button[data-state=checked]]:border-[#d42c2c] has-[button[data-state=checked]]:bg-[#d42c2c]/5">
+                      <div key={val.id} className="flex items-center justify-between rounded-2xl border-2 p-4 transition-all has-[button[data-state=checked]]:border-brand-primary has-[button[data-state=checked]]:bg-brand-primary/5 cursor-pointer hover:bg-zinc-50">
                         <div className="flex items-center gap-3">
                           <Checkbox 
                             id={val.id} 
                             checked={selectedOptions[opt.id]?.includes(val.id)}
                             onCheckedChange={() => handleToggleOption(opt.id, val.id, 'multiple')}
-                            className="border-2 data-[state=checked]:bg-[#d42c2c] data-[state=checked]:border-[#d42c2c]"
+                            className="border-2 data-[state=checked]:bg-brand-primary data-[state=checked]:border-brand-primary"
                           />
-                          <Label htmlFor={val.id} className="font-medium cursor-pointer">{val.label}</Label>
+                          <Label htmlFor={val.id} className="font-bold text-[#3d2b1f] cursor-pointer">{val.label}</Label>
                         </div>
                         {Number(val.extra_price) > 0 && (
-                          <span className="text-sm font-bold text-[#d42c2c]">
+                          <span className="text-sm font-black text-brand-primary">
                             +Rp {new Intl.NumberFormat('id-ID').format(val.extra_price)}
                           </span>
                         )}
@@ -182,46 +187,46 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
           </div>
         </ScrollArea>
 
-        <SheetFooter className="absolute bottom-0 left-0 right-0 bg-white border-t p-6 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+        <DialogFooter className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
           <div className="w-full space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 bg-zinc-100 p-1 rounded-full">
+              <div className="flex items-center gap-4 bg-zinc-100 p-1 rounded-2xl">
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-10 w-10 rounded-full"
+                  className="h-12 w-12 rounded-xl"
                   onClick={() => setQuantity(q => Math.max(1, q - 1))}
                 >
                   <Minus size={20} />
                 </Button>
-                <span className="text-xl font-bold w-6 text-center">{quantity}</span>
+                <span className="text-2xl font-black w-8 text-center text-brand-primary">{quantity}</span>
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-10 w-10 rounded-full"
+                  className="h-12 w-12 rounded-xl"
                   onClick={() => setQuantity(q => q + 1)}
                 >
                   <Plus size={20} />
                 </Button>
               </div>
               <div className="text-right">
-                <p className="text-sm text-zinc-500">Total Harga</p>
-                <p className="text-2xl font-black text-[#d42c2c]">
+                <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest leading-none mb-1">Total Item Ini</p>
+                <p className="text-3xl font-black text-brand-primary tracking-tighter">
                   Rp {new Intl.NumberFormat('id-ID').format(totalPrice)}
                 </p>
               </div>
             </div>
             
             <Button 
-              className="w-full h-14 rounded-2xl bg-[#d42c2c] text-white text-lg font-bold hover:bg-[#b02424] disabled:opacity-50"
+              className="w-full h-16 rounded-[1.5rem] bg-brand-primary text-white text-lg font-black hover:bg-blue-900 disabled:opacity-50 shadow-xl shadow-blue-100 active:scale-[0.98] transition-all"
               disabled={isAddDisabled()}
               onClick={handleAddToCart}
             >
-              Tambah ke Keranjang
+              TAMBAHKAN KE KERANJANG
             </Button>
           </div>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
