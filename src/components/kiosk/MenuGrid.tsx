@@ -37,7 +37,6 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
   const [isCartSheetOpen, setIsCartSheetOpen] = useState(false)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
 
-  // Payment states
   const [isCreatingOrder, setIsCreatingOrder] = useState(false)
   const [orderData, setOrderData] = useState<any>(null)
   const [paymentStep, setPaymentStep] = useState<'none' | 'qris' | 'cash'>('none')
@@ -45,7 +44,6 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
   const totalPrice = items.reduce((sum, item) => sum + item.subtotal, 0)
 
-  // Realtime subscription for sold-out and stock sync
   useEffect(() => {
     const channel = supabase
       .channel('menu-updates')
@@ -72,7 +70,6 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
   }, [supabase])
 
   const handleMenuClick = (menu: any) => {
-    // Menu is unavailable if manually sold out OR stock <= 0
     if (menu.is_sold_out || menu.current_stock <= 0) return
     setSelectedMenu(menu)
     setIsCustomSheetOpen(true)
@@ -96,10 +93,7 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
       })
 
       if (result.success) {
-        setOrderData({
-          ...result,
-          customerName
-        })
+        setOrderData({ ...result, customerName })
         setPaymentStep(method === 'QRIS' ? 'qris' : 'cash')
       }
     } catch (error: any) {
@@ -115,7 +109,7 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
   )
 
   return (
-    <div className="flex h-full flex-col relative overflow-hidden">
+    <div className="flex h-full flex-col relative overflow-hidden bg-zinc-50">
       {/* Category Tabs */}
       <div className="bg-white px-4 py-2 shadow-sm shrink-0">
         <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
@@ -123,7 +117,7 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
             <TabsList className="bg-transparent p-0 flex gap-2 h-auto">
               <TabsTrigger 
                 value="all"
-                className="rounded-full px-5 py-2.5 font-bold border-2 border-transparent data-[state=active]:bg-[#d42c2c] data-[state=active]:text-white transition-all text-sm uppercase tracking-wider text-zinc-500"
+                className="rounded-full px-5 py-2.5 font-bold border-2 border-transparent data-[state=active]:bg-brand-primary data-[state=active]:text-white transition-all text-sm uppercase tracking-wider text-zinc-500"
               >
                 Semua
               </TabsTrigger>
@@ -131,7 +125,7 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
                 <TabsTrigger
                   key={cat.id}
                   value={cat.id}
-                  className="rounded-full px-5 py-2.5 font-bold border-2 border-transparent data-[state=active]:bg-[#d42c2c] data-[state=active]:text-white transition-all text-sm uppercase tracking-wider text-zinc-500"
+                  className="rounded-full px-5 py-2.5 font-bold border-2 border-transparent data-[state=active]:bg-brand-primary data-[state=active]:text-white transition-all text-sm uppercase tracking-wider text-zinc-500"
                 >
                   {cat.name}
                 </TabsTrigger>
@@ -163,8 +157,8 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
                       className="h-full w-full object-cover transition-transform group-hover:scale-110"
                     />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-zinc-300">
-                      <span className="text-[10px] font-black uppercase">Ayam Kalintang</span>
+                    <div className="h-full w-full flex items-center justify-center text-zinc-300">
+                      <span className="text-[10px] font-black uppercase tracking-widest">Kalintang</span>
                     </div>
                   )}
                   {isUnavailable && (
@@ -179,11 +173,11 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
                     <p className="text-[10px] text-zinc-400 font-bold uppercase mt-1 opacity-60">{menu.categories?.name}</p>
                   </div>
                   <div className="flex flex-col gap-1.5 mt-auto">
-                    <p className="text-base md:text-lg font-black text-[#d42c2c] tracking-tighter">
+                    <p className="text-base md:text-lg font-black text-brand-primary tracking-tighter">
                       Rp {new Intl.NumberFormat('id-ID').format(menu.price)}
                     </p>
                     {menu.current_stock > 0 && menu.current_stock <= 10 && (
-                      <span className="text-[9px] font-black text-orange-600 bg-orange-50 px-2 py-1 rounded-lg uppercase tracking-widest border border-orange-100 self-start">
+                      <span className="text-[9px] font-black text-brand-tertiary bg-orange-50 px-2 py-1 rounded-lg uppercase tracking-widest border border-orange-100 self-start">
                         Sisa {menu.current_stock}
                       </span>
                     )}
@@ -200,12 +194,12 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 w-full max-w-lg px-6">
           <button 
             onClick={() => setIsCartSheetOpen(true)}
-            className="flex w-full items-center justify-between rounded-3xl bg-[#d42c2c] p-5 text-white shadow-[0_20px_50px_rgba(212,44,44,0.3)] transition-all active:scale-95 border-b-4 border-red-800"
+            className="flex w-full items-center justify-between rounded-3xl bg-brand-primary p-5 text-white shadow-[0_20px_50px_rgba(6,103,172,0.3)] transition-all active:scale-95 border-b-4 border-blue-900"
           >
             <div className="flex items-center gap-4">
               <div className="relative p-2 bg-white/20 rounded-xl backdrop-blur-sm">
                 <ShoppingBasket size={28} />
-                <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-xs font-black text-[#d42c2c] shadow-lg">
+                <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-brand-secondary text-xs font-black text-white shadow-lg">
                   {totalItems}
                 </span>
               </div>
@@ -216,7 +210,7 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
                 </p>
               </div>
             </div>
-            <div className="bg-white/20 p-2 rounded-xl">
+            <div className="bg-white/20 p-2 rounded-xl text-brand-secondary">
               <ChevronRight size={24} />
             </div>
           </button>
@@ -225,16 +219,16 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
 
       {/* Loading Overlay */}
       {isCreatingOrder && (
-        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-[#f8f1e7]/90 backdrop-blur-md">
-          <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl flex flex-col items-center gap-6 border-4 border-[#d42c2c]/10">
+        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-white/90 backdrop-blur-md">
+          <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl flex flex-col items-center gap-6 border-4 border-brand-primary/10">
             <div className="relative">
-              <Loader2 className="h-16 w-16 animate-spin text-[#d42c2c]" />
+              <Loader2 className="h-16 w-16 animate-spin text-brand-primary" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="h-2 w-2 rounded-full bg-[#d42c2c] animate-ping" />
+                <div className="h-2 w-2 rounded-full bg-brand-primary animate-ping" />
               </div>
             </div>
             <div className="text-center">
-              <p className="text-xl font-black text-[#3d2b1f] uppercase tracking-tighter">Memproses Pesanan</p>
+              <p className="text-xl font-black text-brand-primary uppercase tracking-tighter">Memproses Pesanan</p>
               <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest mt-1">Mohon tunggu sebentar...</p>
             </div>
           </div>
