@@ -1,57 +1,70 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
 
 export async function getDashboardStats() {
   const supabase = await createClient()
-  const today = new Date().toISOString().split('T')[0]
-
+  
+  // Date setup
+  const now = new Date()
+  const todayStart = new Date(now.setHours(0, 0, 0, 0)).toISOString()
+  
   const sevenDaysAgo = new Date()
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-  const startDate = sevenDaysAgo.toISOString().split('T')[0]
+  const startDate = sevenDaysAgo.toISOString()
 
-  // 1. Total Revenue Today
-  const { data: revenueData } = await supabase
+  // 1. Fetch Today's Orders
+  const { data: todayOrders } = await supabase
     .from('orders')
-    .select('total_price, created_at, payment_method')
+    .select('total_price, order_type, payment_method, created_at')
     .eq('payment_status', 'paid')
-    .gte('created_at', today)
+    .gte('created_at', todayStart)
 
-  const totalRevenueToday = revenueData?.reduce((sum, o) => sum + Number(o.total_price), 0) || 0
+  const totalRevenueToday = todayOrders?.reduce((sum, o) => sum + Number(o.total_price), 0) || 0
+  const totalOrdersToday = todayOrders?.length || 0
+  const avgOrderValue = totalOrdersToday > 0 ? totalRevenueToday / totalOrdersToday : 0
 
-  // 2. Chart Data: Revenue Last 7 Days
-  const { data: chartDataRaw } = await supabase
+  // 2. Weekly Sales Trend
+  const { data: weeklyDataRaw } = await supabase
     .from('orders')
     .select('total_price, created_at')
     .eq('payment_status', 'paid')
     .gte('created_at', startDate)
 
-  const chartMap: Record<string, number> = {}
-  chartDataRaw?.forEach(o => {
+  const weeklyMap: Record<string, number> = {}
+  weeklyDataRaw?.forEach(o => {
     const day = new Date(o.created_at).toLocaleDateString('id-ID', { weekday: 'short' })
-    chartMap[day] = (chartMap[day] || 0) + Number(o.total_price)
+    weeklyMap[day] = (weeklyMap[day] || 0) + Number(o.total_price)
   })
+  const weeklyChartData = Object.entries(weeklyMap).map(([day, total]) => ({ day, total }))
 
-  const chartData = Object.entries(chartMap).map(([day, total]) => ({ day, total }))
+  // 3. Peak Hour Analysis
+  const hourlyMap: Record<number, number> = {}
+  todayOrders?.forEach(o => {
+    const hour = new Date(o.created_at).getHours()
+    hourlyMap[hour] = (hourlyMap[hour] || 0) + 1
+  })
+  const hourlyData = Object.entries(hourlyMap).map(([hour, count]) => ({
+    hour: `${hour.padStart(2, '0')}:00`,
+    orders: count
+  })).filter(h => parseInt(h.hour) >= 8 && parseInt(h.hour) <= 22)
 
-  // 3. Payment Method Breakdown
-  const qrisCount = revenueData?.filter(o => o.payment_method === 'QRIS').length || 0
-  const cashCount = revenueData?.filter(o => o.payment_method === 'CASH').length || 0
+  // 4. Inventory Value & Low Stock
+  const { data: inventoryData } = await supabase
+    .from('menus')
+    .select('name, current_stock, price')
 
-  // 4. Total Orders Today
-  const { count: totalOrdersToday } = await supabase
-    .from('orders')
-    .select('*', { count: 'exact', head: true })
-    .gte('created_at', today)
+  const totalInventoryValue = inventoryData?.reduce((sum, item) => sum + (item.current_stock * Number(item.price)), 0) || 0
+  const lowStockItems = inventoryData?.filter(i => i.current_stock <= 10).sort((a,b) => a.current_stock - b.current_stock).slice(0, 5) || []
 
-  // 5. Bestsellers
-  const { data: bestsellers } = await supabase
+  // 5. Bestsellers (Menu Engineering)
+  const { data: bestsellerItems } = await supabase
     .from('order_items')
     .select('menu_name, quantity')
-    .order('quantity', { ascending: false })
   
   const salesMap: Record<string, number> = {}
-  bestsellers?.forEach(item => {
+  bestsellerItems?.forEach(item => {
     salesMap[item.menu_name] = (salesMap[item.menu_name] || 0) + item.quantity
   })
 
@@ -61,25 +74,40 @@ export async function getDashboardStats() {
     .slice(0, 5)
 
   return {
-    totalRevenueToday,
-    totalOrdersToday: totalOrdersToday || 0,
+    financials: {
+      revenue: totalRevenueToday,
+      orders: totalOrdersToday,
+      aov: avgOrderValue,
+      inventoryValue: totalInventoryValue,
+      estGrossProfit: totalRevenueToday * 0.65 // Owners love estimated profit (assuming 35% COGS/Food Cost)
+    },
+    operations: {
+      dineIn: todayOrders?.filter(o => o.order_type === 'dine-in').length || 0,
+      takeaway: todayOrders?.filter(o => o.order_type === 'take-away').length || 0,
+      hourlyData
+    },
+    weeklyChartData,
+    inventoryAlerts: lowStockItems,
     bestsellers: sortedBestsellers,
-    chartData,
-    paymentStats: { qris: qrisCount, cash: cashCount }
+    paymentStats: {
+      qris: todayOrders?.filter(o => o.payment_method === 'QRIS').length || 0,
+      cash: todayOrders?.filter(o => o.payment_method === 'CASH').length || 0
+    }
   }
 }
 
-export async function adjustStock(menuId: string, quantity: number, type: 'IN' | 'ADJUSTMENT', notes: string) {
+export async function adjustStock(menuId: string, amount: number, reason: string) {
   const supabase = await createClient()
 
-  const { data: menu } = await supabase
+  const { data: menu, error: fetchError } = await supabase
     .from('menus')
     .select('current_stock')
     .eq('id', menuId)
     .single()
 
-  const currentStock = menu?.current_stock || 0
-  const newStock = type === 'IN' ? currentStock + quantity : quantity
+  if (fetchError) throw new Error(fetchError.message)
+
+  const newStock = (menu.current_stock || 0) + amount
 
   const { error: updateError } = await supabase
     .from('menus')
@@ -92,13 +120,14 @@ export async function adjustStock(menuId: string, quantity: number, type: 'IN' |
     .from('inventory_movements')
     .insert({
       menu_id: menuId,
-      movement_type: type,
-      quantity: quantity,
-      notes: notes
+      movement_type: amount >= 0 ? 'in' : 'out',
+      amount: Math.abs(amount),
+      reason: reason
     })
 
   if (logError) throw new Error(logError.message)
 
+  revalidatePath('/admin/inventory')
   return { success: true }
 }
 

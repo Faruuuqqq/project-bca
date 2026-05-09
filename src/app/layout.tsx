@@ -1,50 +1,39 @@
-import type { Viewport } from 'next'
+import type { Metadata, Viewport } from 'next'
+import { Plus_Jakarta_Sans } from 'next/font/google'
+import './globals.css'
+import { Toaster } from '@/components/ui/sonner'
+
+const jakarta = Plus_Jakarta_Sans({ 
+  subsets: ['latin'],
+  variable: '--font-jakarta',
+})
+
+export const metadata: Metadata = {
+  title: 'Ayam Kalintang - Self Order Kiosk',
+  description: 'Sistem Pemesanan Mandiri Ayam Kalintang - Bakti BCA',
+}
 
 export const viewport: Viewport = {
-  themeColor: '#d42c2c',
+  themeColor: '#0667AC',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
 }
 
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "Ayam Kalintang - Self Order Kiosk",
-  description: "Sistem Pesan Mandiri Ayam Kalintang",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Ayam Kalintang",
-  },
-};
-
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full`}
-    >
-      <body className="min-h-full flex flex-col overflow-x-hidden selection:bg-[#d42c2c] selection:text-white">
-        {children}
+    <html lang="id" className="h-full scroll-smooth">
+      <body className={`${jakarta.variable} font-sans min-h-full flex flex-col overflow-x-hidden selection:bg-brand-primary selection:text-white`}>
+        <div className="flex-1 flex flex-col">
+          {children}
+        </div>
+        <Toaster position="top-center" richColors closeButton />
       </body>
     </html>
-  );
+  )
 }
