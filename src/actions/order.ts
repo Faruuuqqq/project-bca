@@ -2,30 +2,20 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { CartItem } from '@/store/cart'
-// @ts-ignore
-import midtransClient from 'midtrans-client'
-
-const snap = new midtransClient.Snap({
-  isProduction: process.env.MIDTRANS_IS_PRODUCTION === 'true',
-  serverKey: process.env.MIDTRANS_SERVER_KEY,
-  clientKey: process.env.MIDTRANS_CLIENT_KEY,
-})
+import { bcaClient } from '@/lib/bca'
 
 export async function createOrder(data: {
   items: CartItem[]
   orderType: 'dine-in' | 'take-away'
   paymentMethod: 'QRIS' | 'CASH'
-  customerName?: string
 }) {
   const supabase = await createClient()
   const totalPrice = data.items.reduce((sum, item) => sum + item.subtotal, 0)
 
   // 1. Insert into orders table
-  // queue_number and queue_date are handled by DB triggers/defaults
   const { data: order, error: orderError } = await supabase
     .from('orders')
     .insert({
-      customer_name: data.customerName,
       order_type: data.orderType,
       total_price: totalPrice,
       payment_method: data.paymentMethod,
@@ -62,7 +52,7 @@ export async function createOrder(data: {
 
   // 3. Insert order item options
   const itemOptions: any[] = []
-  data.items.forEach((item, index) => {
+  data.items.forEach((item) => {
     if (item.options) {
       const orderItemId = insertedItems.find(ii => ii.menu_id === item.menuId)?.id
       item.options.forEach(opt => {
@@ -87,40 +77,27 @@ export async function createOrder(data: {
     }
   }
 
-  // 4. Handle QRIS Payment with Midtrans
+  // 4. Handle BCA QRIS Payment (Direct API)
   if (data.paymentMethod === 'QRIS') {
     try {
-      const parameter = {
-        transaction_details: {
-          order_id: order.id,
-          gross_amount: totalPrice,
-        },
-        credit_card: {
-          secure: true,
-        },
-        customer_details: {
-          first_name: data.customerName || 'Pelanggan',
-        },
-      }
-
-      const transaction = await snap.createTransaction(parameter)
+      // Generate QRIS string using BCA SNAP API
+      const qrContent = await bcaClient.generateQR(order.id, totalPrice)
       
-      // Update order with midtrans_order_id (if needed for callback mapping)
+      // Update order with BCA Reference (reusing midtrans_order_id column for now)
       await supabase
         .from('orders')
-        .update({ midtrans_order_id: order.id })
+        .update({ midtrans_order_id: order.id }) // Should be renamed in DB eventually
         .eq('id', order.id)
 
       return {
         success: true,
         orderId: order.id,
-        snapToken: transaction.token,
-        snapUrl: transaction.redirect_url,
+        qrContent: qrContent, // Raw EMVCo string from BCA
         queueNumber: order.queue_number
       }
-    } catch (midtransError) {
-      console.error('Midtrans Error:', midtransError)
-      throw new Error('Gagal inisialisasi pembayaran QRIS')
+    } catch (bcaError) {
+      console.error('BCA API Error:', bcaError)
+      throw new Error('Gagal inisialisasi pembayaran BCA QRIS')
     }
   }
 

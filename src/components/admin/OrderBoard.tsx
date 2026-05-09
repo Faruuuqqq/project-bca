@@ -106,7 +106,7 @@ export function OrderBoard({ initialOrders }: { initialOrders: any[] }) {
               <span className="text-4xl font-black tracking-tighter">#{order.queue_number}</span>
               <div className="text-right">
                 <p className="text-[10px] font-bold opacity-60 uppercase">{order.order_type}</p>
-                <p className="text-xs font-black truncate max-w-[120px]">{order.customer_name || 'Pelanggan'}</p>
+                <p className="text-xs font-black">Pesanan Kiosk</p>
               </div>
             </div>
             
