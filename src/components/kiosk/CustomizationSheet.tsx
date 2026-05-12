@@ -34,7 +34,7 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
   useEffect(() => {
     if (menu) {
       setQuantity(1)
-      setSelectedOptions({})
+      setSelectedOptions({}) // NO DEFAULT SELECTION - Force user to pick
       setTotalPrice(Number(menu.price))
     }
   }, [menu])
@@ -114,7 +114,7 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] md:max-w-2xl rounded-[2rem] p-0 flex flex-col bg-white border-none shadow-2xl overflow-hidden h-[85vh] outline-none">
+      <DialogContent showCloseButton={false} className="max-w-[95vw] md:max-w-2xl rounded-[2rem] p-0 flex flex-col bg-white border-none shadow-2xl overflow-hidden h-[85vh] outline-none">
         {/* HEADER - Fixed at top */}
         <DialogHeader className="p-6 bg-white shrink-0 border-b flex flex-row items-center justify-between z-10">
           <div className="space-y-1">
@@ -137,7 +137,7 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
                     {opt.is_required && <span className="text-[#d42c2c] ml-1">*</span>}
                   </h3>
                   {opt.is_required && (
-                    <Badge variant="outline" className="text-[10px] uppercase font-black border-red-200 text-red-500 bg-red-50">Wajib</Badge>
+                    <Badge variant="outline" className="text-[10px] uppercase font-black border-red-200 text-red-500 bg-red-50">Wajib Pilih</Badge>
                   )}
                 </div>
 
@@ -195,7 +195,7 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-12 w-12 rounded-xl"
+                className="h-12 w-12 rounded-xl bg-white shadow-sm"
                 onClick={() => setQuantity(q => Math.max(1, q - 1))}
               >
                 <Minus size={20} />
@@ -204,14 +204,14 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-12 w-12 rounded-xl"
+                className="h-12 w-12 rounded-xl bg-white shadow-sm"
                 onClick={() => setQuantity(q => q + 1)}
               >
                 <Plus size={20} />
               </Button>
             </div>
             <div className="text-right">
-              <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest leading-none mb-1">Total Item Ini</p>
+              <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest leading-none mb-1">Total</p>
               <p className="text-2xl font-black text-brand-primary tracking-tighter">
                 Rp {new Intl.NumberFormat('id-ID').format(totalPrice)}
               </p>

@@ -7,115 +7,86 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { QrCode, Banknote, User, X } from 'lucide-react'
-import { useState } from 'react'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { QrCode, Banknote, X, CheckCircle2, Zap, ShieldCheck } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 
 interface PaymentMethodModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSelect: (method: 'QRIS' | 'CASH', customerName: string) => void
+  onSelect: (method: 'QRIS' | 'CASH') => void
 }
 
 export function PaymentMethodModal({ open, onOpenChange, onSelect }: PaymentMethodModalProps) {
-  const [step, setStep] = useState<'method' | 'name'>('method')
-  const [selectedMethod, setSelectedMethod] = useState<'QRIS' | 'CASH' | null>(null)
-  const [customerName, setCustomerName] = useState('')
-
-  const handleSelectMethod = (method: 'QRIS' | 'CASH') => {
-    setSelectedMethod(method)
-    setStep('name')
-  }
-
-  const handleConfirm = () => {
-    if (selectedMethod) {
-      onSelect(selectedMethod, customerName)
-    }
-  }
-
-  const reset = () => {
-    setStep('method')
-    setSelectedMethod(null)
-    setCustomerName('')
-  }
-
   return (
-    <Dialog open={open} onOpenChange={(val) => {
-      onOpenChange(val)
-      if (!val) reset()
-    }}>
-      <DialogContent showCloseButton={false} className="sm:max-w-md rounded-[2rem] bg-white border-none shadow-2xl p-0 overflow-hidden">
-        <DialogHeader className="p-8 pb-4 flex flex-row items-center justify-between border-b bg-zinc-50/50">
-          <DialogTitle className="text-xl font-black text-[#3d2b1f] uppercase tracking-tight">
-            {step === 'method' ? 'Pilih Metode Bayar' : 'Data Pelanggan'}
-          </DialogTitle>
-          <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="rounded-full">
-            <X size={20} className="text-zinc-400" />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent showCloseButton={false} className="max-w-[90vw] sm:max-w-[420px] rounded-[2.5rem] bg-white border-none shadow-2xl p-0 overflow-hidden outline-none">
+        {/* Header - Unified Design */}
+        <DialogHeader className="p-6 md:p-8 pb-4 flex flex-row items-center justify-between border-b bg-zinc-50/30">
+          <div className="flex flex-col">
+            <DialogTitle className="text-xl font-black text-[#3d2b1f] uppercase tracking-tight">
+              Pilih Pembayaran
+            </DialogTitle>
+            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-[0.2em] mt-0.5">Konfirmasi Pesanan</p>
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="rounded-full h-10 w-10 hover:bg-red-50 hover:text-red-500 transition-colors">
+            <X size={20} />
           </Button>
         </DialogHeader>
 
-        <div className="p-8">
-          {step === 'method' ? (
-            <div className="grid gap-4 py-2">
+        <div className="p-6 md:p-8">
+          <div className="flex flex-col gap-4">
+            {/* QRIS OPTION - Professional Nudge */}
+            <div className="relative group w-full">
+              <div className="absolute -top-3 left-6 z-10">
+                <Badge className="bg-brand-primary text-white border-none px-3 py-1 font-black text-[9px] uppercase tracking-widest shadow-lg flex items-center gap-1.5">
+                  <Zap size={10} className="fill-white" /> Rekomendasi
+                </Badge>
+              </div>
               <Button
                 variant="outline"
-                className="flex h-32 flex-col items-center justify-center gap-2 rounded-2xl border-2 hover:border-brand-primary hover:bg-brand-primary/5 transition-all group"
-                onClick={() => handleSelectMethod('QRIS')}
+                className="w-full h-32 flex flex-col items-center justify-center gap-1 rounded-[1.8rem] border-2 border-brand-primary bg-brand-primary/[0.03] hover:bg-brand-primary/[0.08] transition-all duration-300 relative overflow-hidden"
+                onClick={() => onSelect('QRIS')}
               >
-                <QrCode size={40} className="text-brand-primary group-hover:scale-110 transition-transform" />
-                <div className="text-center">
-                  <p className="font-black text-lg text-[#3d2b1f]">QRIS / E-WALLET</p>
-                  <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest italic">Konfirmasi Otomatis</p>
+                <div className="absolute right-[-10px] bottom-[-10px] text-brand-primary opacity-5 group-hover:opacity-10 transition-opacity">
+                  <CheckCircle2 size={120} />
                 </div>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="flex h-32 flex-col items-center justify-center gap-2 rounded-2xl border-2 hover:border-brand-primary hover:bg-brand-primary/5 transition-all group"
-                onClick={() => handleSelectMethod('CASH')}
-              >
-                <Banknote size={40} className="text-brand-primary group-hover:scale-110 transition-transform" />
-                <div className="text-center">
-                  <p className="font-black text-lg text-[#3d2b1f]">TUNAI DI KASIR</p>
-                  <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest italic">Bayar ke Petugas</p>
+                <QrCode size={40} className="text-brand-primary mb-1 group-hover:scale-110 transition-transform duration-500" />
+                <div className="text-center z-10 px-4">
+                  <p className="font-black text-lg text-[#3d2b1f] tracking-tight">QRIS & Saldo Digital</p>
+                  <p className="text-[10px] text-brand-primary font-bold leading-tight mt-1">
+                    Lunas otomatis. Mendukung myBCA & semua e-wallet.
+                  </p>
                 </div>
               </Button>
             </div>
-          ) : (
-            <div className="space-y-8 py-2">
-              <div className="space-y-3">
-                <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">Nama Pelanggan (Opsional)</Label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-300" size={20} />
-                  <Input
-                    id="name"
-                    placeholder="Contoh: Budi"
-                    className="pl-12 h-16 rounded-2xl bg-zinc-50 border-zinc-100 focus:bg-white focus:border-brand-primary transition-all font-bold text-lg"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                  />
-                </div>
-                <p className="text-[10px] text-zinc-400 font-medium italic">Nama ini akan tercetak pada nomor antrean Anda.</p>
-              </div>
 
-              <div className="space-y-3">
-                <Button 
-                  className="w-full h-16 rounded-2xl bg-brand-primary text-white font-black text-lg shadow-xl shadow-blue-100 hover:bg-blue-900 transition-all active:scale-[0.98]"
-                  onClick={handleConfirm}
-                >
-                  LANJUTKAN PESANAN
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  className="w-full h-12 text-zinc-400 font-bold uppercase tracking-widest text-xs"
-                  onClick={() => setStep('method')}
-                >
-                  Kembali ke Metode Bayar
-                </Button>
-              </div>
+            {/* CASH OPTION - Clean & Operational */}
+            <div className="w-full">
+              <Button
+                variant="outline"
+                className="w-full h-28 flex flex-col items-center justify-center gap-1 rounded-[1.8rem] border-2 border-zinc-100 bg-white hover:border-zinc-200 hover:bg-zinc-50 transition-all duration-300"
+                onClick={() => onSelect('CASH')}
+              >
+                <Banknote size={32} className="text-zinc-400 mb-0.5" />
+                <div className="text-center px-4">
+                  <p className="font-bold text-base text-zinc-600 tracking-tight uppercase">Bayar Tunai di Kasir</p>
+                  <p className="text-[9px] text-zinc-400 font-medium leading-tight mt-1">
+                    Bayar tunai melalui petugas kasir kami.
+                  </p>
+                </div>
+              </Button>
             </div>
-          )}
+          </div>
+        </div>
+
+        {/* Footer - Professional Trust Badge */}
+        <div className="px-8 py-5 bg-zinc-50 border-t flex items-center justify-between gap-4">
+           <div className="flex items-center gap-2">
+              <ShieldCheck size={14} className="text-green-600" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 leading-none">Keamanan Terjamin</span>
+           </div>
+           <div className="h-4 w-px bg-zinc-200" />
+           <p className="text-[9px] font-black text-brand-primary uppercase tracking-[0.15em] leading-none">Merchant ID BC-001293</p>
         </div>
       </DialogContent>
     </Dialog>

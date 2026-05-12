@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SOK Ayam Kalintang - Bakti BCA 2026
 
-## Getting Started
+Self-Order Kiosk (SOK) application built for Ayam Kalintang, a local culinary business, as part of the Bakti BCA scholarship project. This project has been upgraded to **v2.5 (Enterprise-Grade)**, focusing on robust security, high operational efficiency, and a premium user experience.
 
-First, run the development server:
+## ✨ Key Features (v2.5 Updates)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### For Customers (Kiosk)
+- **Cinematic Attract Screen:** A visually stunning, full-screen slideshow showcasing the menu to attract walk-in customers.
+- **Clean Start Logic:** Automatically clears the cart upon selecting "Dine-in" or "Take-away" to prevent abandoned cart overlaps.
+- **High-Density Cart:** A redesigned cart sheet that fits 5-7 items on screen without scrolling, featuring a locked header and footer to prevent UI clipping.
+- **Frictionless Checkout:** Simulated BCA Dynamic QRIS (BI-SNAP) integration and a Cash Wait Screen with massive queue numbers.
+- **Offline Fallback:** Real-time internet connectivity monitoring that visibly alerts customers if the connection drops.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### For Owners & Staff (Admin Hub)
+- **Business Intelligence Dashboard:** Real-time metrics including Estimated Gross Profit, Average Order Value (AOV), Inventory Asset Value, and Peak Hour Analysis graphs.
+- **Chef-Friendly KDS (Kitchen Display System):** An ultra-compact, 4-column layout that minimizes scrolling for chefs. Includes a live elapsed timer that pulses red if an order is delayed (>15 mins).
+- **Unhackable Cashier Security:** Cashier PINs and Recovery Codes are validated strictly on the server-side via Supabase.
+- **Persistent Lockout Mechanism:** If a PIN is entered incorrectly 10 times, the system locks out and persists this state in `localStorage`—even surviving page refreshes—until a supervisor enters the Recovery Code (4321).
+- **Critical Stock Alerts:** Automated warnings for ingredients that drop below 10 portions.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🛠️ Technology Stack
+- **Framework:** Next.js 16 (App Router)
+- **Styling:** Tailwind CSS v4 + shadcn/ui
+- **Database & Auth:** Supabase (PostgreSQL, Realtime, RLS)
+- **State Management:** Zustand
+- **Icons:** Lucide React
+- **Charts:** Recharts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🚀 Getting Started
 
-## Learn More
+1. **Install dependencies:**
+   ```bash
+   pnpm install
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+2. **Set up Environment Variables:**
+   Create a `.env.local` file (refer to `PRD.txt` for required keys including Supabase URL and Anon Key).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. **Run the development server:**
+   ```bash
+   pnpm dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000) with your browser.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🛡️ "Anti-Gagal" Edge Cases Handled
+- **Race Condition Protection:** Real-time stock syncing prevents users from buying out-of-stock items.
+- **Double Payment Prevention:** Submit buttons are disabled immediately upon click during checkout.
+- **Forced Customization:** No default selections in the customization sheet forces users to consciously pick their options (e.g., Breast vs. Thigh).
+- **Category Deletion Safety:** Prevents admins from deleting a category if it still contains active menus.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+*Built with passion by Tim Excellence UNPAD for Bakti BCA 2026.*
