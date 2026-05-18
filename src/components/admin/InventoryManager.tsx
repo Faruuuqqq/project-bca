@@ -34,6 +34,9 @@ import { Badge } from '@/components/ui/badge'
 import { cn, formatDateTime } from '@/lib/utils'
 import { adminTokens } from '@/components/admin/_tokens'
 import { invalidateInventoryCache } from '@/lib/cache'
+import { CriticalStockIndicator, CriticalStockWarning } from '@/components/admin/CriticalStockIndicator'
+import { checkAndTriggerStockAlerts } from '@/actions/admin'
+import { useRealtimeInventory } from '@/hooks/use-realtime-inventory'
 
 interface InventoryManagerProps {
   initialMenus: any[]
@@ -47,12 +50,16 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
   const [searchTerm, setSearchTerm] = useState('')
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
+  // Real-time inventory sync — shows toasts when other admins change stock
+  useRealtimeInventory({ showToasts: true, autoRefresh: true })
+
   // Quick +1 / -1 adjustment
   const handleQuickAdjust = async (menuId: string, menuName: string, amount: number) => {
     setLoadingId(menuId)
     const toastId = toast.loading(`Memperbarui stok ${menuName}...`)
     try {
       await adjustStock(menuId, amount, amount > 0 ? 'Quick add' : 'Quick reduce')
+      await checkAndTriggerStockAlerts(menuId)
       toast.success(`${menuName}: ${amount > 0 ? '+' : ''}${amount} porsi`, { id: toastId })
       invalidateInventoryCache()
       router.refresh()
@@ -74,6 +81,7 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
     const toastId = toast.loading('Menyimpan perubahan stok...')
     try {
       await adjustStock(menuId, amount, reason)
+      await checkAndTriggerStockAlerts(menuId)
       toast.success('Stok berhasil diperbarui', { id: toastId })
       invalidateInventoryCache()
       setIsAdjustDialogOpen(false)
@@ -185,15 +193,10 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
                   </div>
                 </TableCell>
                 <TableCell className="py-4">
-                  {menu.current_stock <= 10 ? (
-                    <Badge className="bg-red-500 text-white uppercase text-xs font-semibold tracking-wide">
-                      Critical
-                    </Badge>
-                  ) : (
-                    <Badge className="bg-emerald-500 text-white uppercase text-xs font-semibold tracking-wide">
-                      Aman
-                    </Badge>
-                  )}
+                  <CriticalStockIndicator
+                    currentStock={menu.current_stock}
+                    threshold={menu.critical_stock_threshold || 5}
+                  />
                 </TableCell>
                 <TableCell className="text-right pr-6 py-4">
                   <div className="flex items-center justify-end gap-1">

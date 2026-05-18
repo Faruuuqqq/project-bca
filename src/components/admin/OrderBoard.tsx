@@ -15,7 +15,7 @@ import {
   Wifi,
   WifiOff,
 } from 'lucide-react'
-import { startCooking, markReady, completeOrder } from '@/actions/payment'
+import { startCooking, markReady, completeOrder, togglePriority } from '@/actions/payment'
 import { toast } from 'sonner'
 import { cn, formatTime } from '@/lib/utils'
 import { adminTokens } from '@/components/admin/_tokens'
@@ -42,9 +42,39 @@ type Order = {
   order_type: 'dine-in' | 'take-away'
   payment_status: string
   order_status: 'pending' | 'cooking' | 'ready' | 'completed' | 'void'
+  is_priority?: boolean
   created_at: string
   updated_at?: string
   order_items?: OrderItem[]
+}
+
+// Calculate estimated prep time based on item count and order type
+function estimatePrepTime(items: OrderItem[] = [], orderType: string) {
+  let minutes = 0
+  
+  items.forEach(item => {
+    // Base 2 mins per item
+    minutes += item.quantity * 2
+    
+    // Add extra time for complex items
+    if (item.menu_name.toLowerCase().includes('bakar') || 
+        item.menu_name.toLowerCase().includes('utuh')) {
+      minutes += 5 * item.quantity
+    }
+    
+    // Add time for customizations
+    if (item.order_item_options && item.order_item_options.length > 0) {
+      minutes += 1 * item.quantity
+    }
+  })
+  
+  // Take-away adds 2 mins for packaging
+  if (orderType === 'take-away') {
+    minutes += 2
+  }
+  
+  // Min 3 mins, Max 30 mins
+  return Math.max(3, Math.min(minutes, 30))
 }
 
 type AgeTier = {
@@ -285,6 +315,14 @@ export function OrderBoard({ initialOrders }: { initialOrders: Order[] }) {
     }
   }
 
+  const handleTogglePriority = async (orderId: string, currentStatus: boolean) => {
+    try {
+      await togglePriority(orderId, currentStatus)
+    } catch (err) {
+      toast.error((err as Error).message)
+    }
+  }
+
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
       {/* Audio cue (gesture-gated by browser; first click anywhere unlocks) */}
@@ -344,6 +382,7 @@ export function OrderBoard({ initialOrders }: { initialOrders: Order[] }) {
                 position={idx + 1}
                 onStart={() => handleStart(order)}
                 onReady={() => handleReady(order)}
+                onTogglePriority={handleTogglePriority}
               />
             ))}
             {cookQueue.length === 0 && (
@@ -446,16 +485,27 @@ function CookCard({
   position,
   onStart,
   onReady,
+  onTogglePriority,
 }: {
   order: Order
   position: number
   onStart: () => void
   onReady: () => void
+  onTogglePriority: (id: string, current: boolean) => void
 }) {
   const isCooking = order.order_status === 'cooking'
+  const isRush = order.is_priority
+  const estMins = estimatePrepTime(order.order_items, order.order_type)
+
   return (
-    <Card className="rounded-2xl border-border shadow-sm overflow-hidden flex flex-col h-full animate-in zoom-in-95 duration-200">
-      <div className="bg-brand-primary px-3 py-2 text-white flex justify-between items-center shrink-0">
+    <Card className={cn(
+      "rounded-2xl shadow-sm overflow-hidden flex flex-col h-full animate-in zoom-in-95 duration-200 border-2",
+      isRush ? "border-red-500 shadow-red-100" : "border-transparent"
+    )}>
+      <div className={cn(
+        "px-3 py-2 text-white flex justify-between items-center shrink-0",
+        isRush ? "bg-red-600" : "bg-brand-primary"
+      )}>
         <div className="flex flex-col">
           <span className="text-xs font-semibold uppercase tracking-wider opacity-70 inline-flex items-center gap-1">
             {position <= 9 && (
@@ -463,18 +513,18 @@ function CookCard({
                 {position}
               </kbd>
             )}
-            Antrean
+            {isRush ? 'RUSH' : 'Antrean'}
           </span>
-          <span className="text-2xl lg:text-3xl font-black tracking-tight leading-none text-brand-secondary tabular-nums">
+          <span className="text-2xl lg:text-3xl font-black tracking-tight leading-none text-white tabular-nums drop-shadow-sm">
             #{order.queue_number}
           </span>
         </div>
         <div className="flex flex-col items-end gap-0.5">
-          <Badge className="bg-white/15 text-white border-none text-[10px] lg:text-xs font-semibold px-2 py-0.5">
+          <Badge className="bg-white/20 text-white border-none text-[10px] lg:text-xs font-semibold px-2 py-0.5">
             {order.order_type === 'take-away' ? 'Bawa Pulang' : 'Makan Sini'}
           </Badge>
           {isCooking && (
-            <Badge className="bg-amber-400 text-amber-900 border-none text-[10px] lg:text-xs font-bold px-2 py-0.5 inline-flex items-center gap-1">
+            <Badge className="bg-amber-400 text-amber-900 border-none text-[10px] lg:text-xs font-bold px-2 py-0.5 inline-flex items-center gap-1 shadow-sm">
               <ChefHat size={10} aria-hidden="true" />
               Memasak
             </Badge>
@@ -482,12 +532,15 @@ function CookCard({
         </div>
       </div>
 
-      <CardContent className="p-3 flex flex-col gap-2 flex-1">
+      <CardContent className="p-3 flex flex-col gap-2 flex-1 relative bg-white">
         <div className="flex justify-between items-center border-b border-border pb-1.5 shrink-0">
           <ElapsedTimer startTime={order.created_at} />
-          <div className="flex items-center text-[10px] lg:text-xs text-muted-foreground font-semibold tabular-nums">
-            <Clock size={12} className="mr-1" aria-hidden="true" />
-            {formatTime(order.created_at)}
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-black uppercase text-brand-primary tracking-widest bg-blue-50 px-1.5 py-0.5 rounded">Est {estMins}m</span>
+            <div className="flex items-center text-[10px] lg:text-xs text-muted-foreground font-semibold tabular-nums">
+              <Clock size={12} className="mr-1" aria-hidden="true" />
+              {formatTime(order.created_at)}
+            </div>
           </div>
         </div>
 
@@ -508,29 +561,43 @@ function CookCard({
           ))}
         </div>
 
-        {isCooking ? (
+        <div className="flex gap-2 shrink-0">
           <Button
+            variant="outline"
             className={cn(
-              'w-full h-10 lg:h-12 min-h-[40px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl font-bold text-xs lg:text-sm shadow-sm flex items-center justify-center gap-2 shrink-0 transition-colors',
-              adminTokens.focus
+              'h-10 lg:h-12 w-12 min-h-[40px] rounded-xl shrink-0 transition-colors',
+              isRush ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'text-zinc-400 hover:text-red-500'
             )}
-            onClick={onReady}
+            onClick={() => onTogglePriority(order.id, !!isRush)}
+            aria-label="Toggle Priority"
           >
-            <CheckCircle2 size={16} aria-hidden="true" />
-            Siap
+            <Bell size={16} />
           </Button>
-        ) : (
-          <Button
-            className={cn(
-              'w-full h-10 lg:h-12 min-h-[40px] bg-brand-primary hover:bg-brand-primary/90 active:bg-brand-primary/80 text-white rounded-xl font-bold text-xs lg:text-sm shadow-sm flex items-center justify-center gap-2 shrink-0 transition-colors',
-              adminTokens.focus
-            )}
-            onClick={onStart}
-          >
-            <ChefHat size={16} aria-hidden="true" />
-            Mulai Masak
-          </Button>
-        )}
+          
+          {isCooking ? (
+            <Button
+              className={cn(
+                'w-full h-10 lg:h-12 min-h-[40px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl font-bold text-xs lg:text-sm shadow-sm flex items-center justify-center gap-2 shrink-0 transition-colors flex-1',
+                adminTokens.focus
+              )}
+              onClick={onReady}
+            >
+              <CheckCircle2 size={16} aria-hidden="true" />
+              Siap
+            </Button>
+          ) : (
+            <Button
+              className={cn(
+                'w-full h-10 lg:h-12 min-h-[40px] bg-brand-primary hover:bg-brand-primary/90 active:bg-brand-primary/80 text-white rounded-xl font-bold text-xs lg:text-sm shadow-sm flex items-center justify-center gap-2 shrink-0 transition-colors flex-1',
+                adminTokens.focus
+              )}
+              onClick={onStart}
+            >
+              <ChefHat size={16} aria-hidden="true" />
+              Masak
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   )

@@ -324,3 +324,316 @@ export async function getOrderById(orderId: string) {
   if (error) throw new Error(error.message)
   return data
 }
+
+/**
+ * Get all menu items currently below their critical stock threshold
+ */
+export async function getCriticalStockAlerts() {
+  const supabase = await createClient()
+  try {
+    const { data, error } = await supabase
+      .from('menus')
+      .select('id, name, current_stock, critical_stock_threshold')
+      .lt('current_stock', 'critical_stock_threshold')
+      .order('current_stock', { ascending: true })
+
+    if (error) {
+      console.warn("Stock alert error (likely missing migration):", error.message)
+      return []
+    }
+    return data || []
+  } catch (e) {
+    return []
+  }
+}
+
+/**
+ * Get alert history for a specific menu item
+ */
+export async function getStockAlertHistory(menuId: string, limit = 10) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('stock_alerts')
+    .select('*')
+    .eq('menu_id', menuId)
+    .order('triggered_at', { ascending: false })
+    .limit(limit)
+
+  if (error) throw new Error(error.message)
+  return data || []
+}
+
+/**
+ * Create a stock alert when item drops below threshold
+ */
+export async function createStockAlert(
+  menuId: string,
+  currentStock: number,
+  threshold: number
+) {
+  const supabase = await createClient()
+  const { error } = await supabase.from('stock_alerts').insert({
+    menu_id: menuId,
+    stock_level: currentStock,
+    threshold: threshold,
+  })
+
+  if (error) throw new Error(error.message)
+  return { success: true }
+}
+
+/**
+ * Dismiss/acknowledge a stock alert
+ */
+export async function dismissStockAlert(alertId: string) {
+  const supabase = await createClient()
+  const { data } = await supabase.auth.getSession()
+  
+  const { error } = await supabase
+    .from('stock_alerts')
+    .update({
+      dismissed_at: new Date().toISOString(),
+      dismissed_by: data?.session?.user?.id,
+    })
+    .eq('id', alertId)
+
+  if (error) throw new Error(error.message)
+  revalidatePath('/admin/inventory')
+  return { success: true }
+}
+
+/**
+ * Update critical stock threshold for a menu item
+ */
+export async function updateStockThreshold(menuId: string, threshold: number) {
+  const supabase = await createClient()
+  
+  if (threshold < 0) throw new Error('Threshold tidak boleh negatif')
+  
+  const { error } = await supabase
+    .from('menus')
+    .update({ critical_stock_threshold: threshold })
+    .eq('id', menuId)
+
+  if (error) throw new Error(error.message)
+  revalidatePath('/admin/inventory')
+  return { success: true }
+}
+
+/**
+ * Check and trigger alerts for items below threshold
+ * Called after every stock adjustment
+ */
+export async function checkAndTriggerStockAlerts(menuId: string) {
+  const supabase = await createClient()
+  
+  try {
+    const { data: menu, error: fetchError } = await supabase
+      .from('menus')
+      .select('current_stock, critical_stock_threshold, name')
+      .eq('id', menuId)
+      .single()
+
+    if (fetchError) {
+      console.warn("Could not check stock thresholds:", fetchError.message)
+      return { success: true } // Graceful fail
+    }
+
+    // Default threshold to 5 if undefined (migration not run)
+    const threshold = menu.critical_stock_threshold ?? 5
+
+    // Check if we should create an alert
+    if (menu.current_stock <= threshold) {
+      // Check if alert already exists (undismissed)
+      const { data: existingAlert, error: alertError } = await supabase
+        .from('stock_alerts')
+        .select('id')
+        .eq('menu_id', menuId)
+        .is('dismissed_at', null)
+        .single()
+
+      if (alertError && alertError.code !== 'PGRST116') {
+        console.warn("Could not check existing alerts:", alertError.message)
+      } else if (!existingAlert) {
+        // Try creating alert, but fail gracefully if table doesn't exist
+        try {
+          await createStockAlert(menuId, menu.current_stock, threshold)
+        } catch (e) {
+          console.warn("Could not create alert:", e)
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Stock alert check failed:", e)
+  }
+
+  return { success: true }
+}
+
+/**
+ * Get payment history with aggregated statistics
+ */
+export async function getPaymentHistory(limit: number = 100, offset: number = 0) {
+  const supabase = await createClient()
+  
+  const { data, error, count } = await supabase
+    .from('orders')
+    .select(
+      'id, total_price, payment_method, payment_status, order_type, created_at, order_items(menu_name, quantity, menu_price)',
+      { count: 'exact' }
+    )
+    .eq('payment_status', 'paid')
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (error) throw new Error(error.message)
+  return { payments: data, total: count }
+}
+
+/**
+ * Get payment statistics (cash vs QRIS, success rate, etc)
+ */
+export async function getPaymentStatistics(dateFrom?: string, dateTo?: string) {
+  const supabase = await createClient()
+  
+  let query = supabase
+    .from('orders')
+    .select('total_price, payment_method, payment_status')
+    .eq('payment_status', 'paid')
+
+  if (dateFrom) {
+    query = query.gte('created_at', dateFrom)
+  }
+  if (dateTo) {
+    query = query.lte('created_at', dateTo)
+  }
+
+  const { data, error } = await query
+
+  if (error) throw new Error(error.message)
+
+  // Aggregate statistics
+  const stats = {
+    totalRevenue: 0,
+    qrisRevenue: 0,
+    cashRevenue: 0,
+    qrisCount: 0,
+    cashCount: 0,
+  }
+
+  data?.forEach((order) => {
+    stats.totalRevenue += order.total_price || 0
+    if (order.payment_method === 'QRIS') {
+      stats.qrisRevenue += order.total_price || 0
+      stats.qrisCount++
+    } else if (order.payment_method === 'CASH') {
+      stats.cashRevenue += order.total_price || 0
+      stats.cashCount++
+    }
+  })
+
+  return stats
+}
+
+/**
+ * Get menu sales statistics
+ */
+export async function getMenuSalesHistory(limit: number = 100, offset: number = 0) {
+  const supabase = await createClient()
+
+  // Fetch order items with menu details
+  const { data, error, count } = await supabase
+    .from('order_items')
+    .select(
+      'menu_name, quantity, menu_price, menus(id, cost_price)',
+      { count: 'exact' }
+    )
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (error) throw new Error(error.message)
+
+  // Aggregate by menu
+  const aggregated = new Map<
+    string,
+    {
+      name: string
+      units: number
+      revenue: number
+      cost: number
+    }
+  >()
+
+  data?.forEach((item: any) => {
+    const key = item.menu_name
+    const current = aggregated.get(key) || {
+      name: item.menu_name,
+      units: 0,
+      revenue: 0,
+      cost: 0,
+    }
+
+    current.units += item.quantity || 0
+    current.revenue += (item.menu_price || 0) * (item.quantity || 0)
+    if (item.menus?.cost_price) {
+      current.cost += item.menus.cost_price * (item.quantity || 0)
+    }
+
+    aggregated.set(key, current)
+  })
+
+  const results = Array.from(aggregated.values())
+    .sort((a, b) => b.revenue - a.revenue)
+
+  return { sales: results, total: count }
+}
+
+/**
+ * Get top selling menu items
+ */
+export async function getTopSellingMenus(days: number = 30, limit: number = 10) {
+  const supabase = await createClient()
+  const dateFrom = new Date()
+  dateFrom.setDate(dateFrom.getDate() - days)
+
+  const { data, error } = await supabase
+    .from('order_items')
+    .select('menu_name, quantity, menu_price, menus(id, cost_price)')
+    .gte('created_at', dateFrom.toISOString())
+
+  if (error) throw new Error(error.message)
+
+  // Aggregate sales
+  const aggregated = new Map<
+    string,
+    {
+      name: string
+      units: number
+      revenue: number
+      profit: number
+    }
+  >()
+
+  data?.forEach((item: any) => {
+    const key = item.menu_name
+    const current = aggregated.get(key) || {
+      name: item.menu_name,
+      units: 0,
+      revenue: 0,
+      profit: 0,
+    }
+
+    const itemRevenue = (item.menu_price || 0) * (item.quantity || 0)
+    const itemCost = (item.menus?.cost_price || 0) * (item.quantity || 0)
+
+    current.units += item.quantity || 0
+    current.revenue += itemRevenue
+    current.profit += itemRevenue - itemCost
+
+    aggregated.set(key, current)
+  })
+
+  return Array.from(aggregated.values())
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, limit)
+}

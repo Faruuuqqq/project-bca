@@ -116,3 +116,19 @@ export async function markReady(orderId: string) {
 
   return { success: true }
 }
+
+export async function togglePriority(orderId: string, currentPriority: boolean) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('orders')
+    .update({ is_priority: !currentPriority })
+    .eq('id', orderId)
+
+  if (error) {
+    console.error('Toggle Priority Error:', error)
+    throw new Error('Gagal ubah prioritas')
+  }
+
+  return { success: true }
+}
