@@ -59,23 +59,23 @@ export function HistoryFilters({ menus, onFilterChange }: HistoryFiltersProps) {
   const hasActiveFilters = searchTerm || selectedMenu || movementType !== 'all' || dateFrom || dateTo
 
   return (
-    <div className="bg-card rounded-2xl shadow-sm border border-border p-5 space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-        {/* Search */}
-        <div className="space-y-1.5">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Cari
-          </Label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
-            <Input
-              placeholder="Item atau alasan..."
-              className="pl-9 h-10 rounded-lg border border-border"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
+    <div className="bg-card rounded-2xl shadow-sm border border-border p-4 lg:p-5 space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 lg:gap-3">
+         {/* Search */}
+         <div className="space-y-1.5">
+           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+             Cari
+           </Label>
+           <div className="relative">
+             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
+             <Input
+               placeholder="Item atau alasan..."
+               className="pl-9 h-10 rounded-lg border border-border text-sm"
+               value={searchTerm}
+               onChange={(e) => setSearchTerm(e.target.value)}
+             />
+           </div>
+         </div>
 
         {/* Menu Filter */}
         <div className="space-y-1.5">
@@ -114,31 +114,31 @@ export function HistoryFilters({ menus, onFilterChange }: HistoryFiltersProps) {
           </Select>
         </div>
 
-        {/* Date From */}
-        <div className="space-y-1.5">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Dari
-          </Label>
-          <input
-            type="date"
-            className="h-10 w-full rounded-lg border border-border px-3 text-sm bg-background"
-            value={dateFrom || ''}
-            onChange={(e) => setDateFrom(e.target.value || null)}
-          />
-        </div>
+         {/* Date From */}
+         <div className="space-y-1.5">
+           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+             Dari
+           </Label>
+           <input
+             type="date"
+             className="h-10 w-full rounded-lg border border-border px-3 text-sm bg-background appearance-none cursor-pointer"
+             value={dateFrom || ''}
+             onChange={(e) => setDateFrom(e.target.value || null)}
+           />
+         </div>
 
-        {/* Date To */}
-        <div className="space-y-1.5">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Sampai
-          </Label>
-          <input
-            type="date"
-            className="h-10 w-full rounded-lg border border-border px-3 text-sm bg-background"
-            value={dateTo || ''}
-            onChange={(e) => setDateTo(e.target.value || null)}
-          />
-        </div>
+         {/* Date To */}
+         <div className="space-y-1.5">
+           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+             Sampai
+           </Label>
+           <input
+             type="date"
+             className="h-10 w-full rounded-lg border border-border px-3 text-sm bg-background appearance-none cursor-pointer"
+             value={dateTo || ''}
+             onChange={(e) => setDateTo(e.target.value || null)}
+           />
+         </div>
       </div>
 
       {/* Action Buttons */}

@@ -7,7 +7,7 @@
 @theme {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  
+
   /* Brand Colors from colorPallete.png */
   --color-brand-primary: #0667AC;
   --color-brand-secondary: #FEB914;
@@ -21,7 +21,19 @@
   --color-background: #f8fafc;
   --color-foreground: #1e293b;
   --color-primary: #0667AC;
+  --color-primary-foreground: #ffffff;
   --color-secondary: #FEB914;
+  --color-secondary-foreground: #1e293b;
+  --color-card: #ffffff;
+  --color-card-foreground: #1e293b;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #1e293b;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-accent: #f1f5f9;
+  --color-accent-foreground: #0f172a;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #f8fafc;
 }
 
 :root {
@@ -58,13 +70,23 @@
     color: var(--foreground);
     overscroll-behavior-y: none;
     -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
   }
 }
 
-/* Custom Scrollbar */
+/* Touch-friendly scrolling for iPad */
+@layer utilities {
+  .touch-scroll {
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+  }
+}
+
+/* Custom Scrollbar — wider for touch devices */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -75,4 +97,12 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* iPad / tablet: even wider scrollbar for finger dragging */
+@media (pointer: coarse) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
 }

@@ -33,6 +33,7 @@ import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { cn, formatDateTime } from '@/lib/utils'
 import { adminTokens } from '@/components/admin/_tokens'
+import { invalidateInventoryCache } from '@/lib/cache'
 
 interface InventoryManagerProps {
   initialMenus: any[]
@@ -49,12 +50,14 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
   // Quick +1 / -1 adjustment
   const handleQuickAdjust = async (menuId: string, menuName: string, amount: number) => {
     setLoadingId(menuId)
+    const toastId = toast.loading(`Memperbarui stok ${menuName}...`)
     try {
       await adjustStock(menuId, amount, amount > 0 ? 'Quick add' : 'Quick reduce')
-      toast.success(`${menuName}: ${amount > 0 ? '+' : ''}${amount} porsi`)
+      toast.success(`${menuName}: ${amount > 0 ? '+' : ''}${amount} porsi`, { id: toastId })
+      invalidateInventoryCache()
       router.refresh()
     } catch (error: any) {
-      toast.error(error.message)
+      toast.error(error.message, { id: toastId })
     } finally {
       setLoadingId(null)
     }
@@ -68,14 +71,16 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
     const amount = parseInt(formData.get('amount') as string, 10)
     const reason = formData.get('reason') as string
 
+    const toastId = toast.loading('Menyimpan perubahan stok...')
     try {
       await adjustStock(menuId, amount, reason)
-      toast.success('Stok berhasil diperbarui')
+      toast.success('Stok berhasil diperbarui', { id: toastId })
+      invalidateInventoryCache()
       setIsAdjustDialogOpen(false)
       setAdjustTarget(null)
       router.refresh()
     } catch (error: any) {
-      toast.error(error.message)
+      toast.error(error.message || 'Gagal memperbarui stok', { id: toastId })
     }
   }
 

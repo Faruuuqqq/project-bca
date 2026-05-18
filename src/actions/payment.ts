@@ -68,14 +68,50 @@ export async function verifyRecoveryCode(code: string) {
 export async function completeOrder(orderId: string) {
   const supabase = await createClient()
 
+  // Idempotent guard: only ready orders can be marked completed.
   const { error } = await supabase
     .from('orders')
     .update({ order_status: 'completed' })
     .eq('id', orderId)
+    .eq('order_status', 'ready')
 
   if (error) {
     console.error('Complete Order Error:', error)
     throw new Error('Gagal menandai pesanan selesai')
+  }
+
+  return { success: true }
+}
+
+export async function startCooking(orderId: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('orders')
+    .update({ order_status: 'cooking' })
+    .eq('id', orderId)
+    .eq('order_status', 'pending')
+
+  if (error) {
+    console.error('Start Cooking Error:', error)
+    throw new Error('Gagal mulai masak')
+  }
+
+  return { success: true }
+}
+
+export async function markReady(orderId: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('orders')
+    .update({ order_status: 'ready' })
+    .eq('id', orderId)
+    .eq('order_status', 'cooking')
+
+  if (error) {
+    console.error('Mark Ready Error:', error)
+    throw new Error('Gagal tandai siap')
   }
 
   return { success: true }

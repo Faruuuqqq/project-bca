@@ -4,16 +4,15 @@ import { OrderBoard } from '@/components/admin/OrderBoard'
 export default async function AdminOrdersPage() {
   const supabase = await createClient()
 
-  // Fetch initial orders for today that are not completed
+  // Active orders for KDS: paid, not yet completed/voided.
+  // Includes order_items + their options so chef sees customizations.
   const { data: orders } = await supabase
     .from('orders')
-    .select('*, order_items(*)')
+    .select('*, order_items(*, order_item_options(*))')
+    .eq('payment_status', 'paid')
     .neq('order_status', 'completed')
-    .order('created_at', { ascending: true }) // Oldest first for KDS flow
+    .neq('order_status', 'void')
+    .order('created_at', { ascending: true })
 
-  return (
-    <div className="p-8">
-      <OrderBoard initialOrders={orders || []} />
-    </div>
-  )
+  return <OrderBoard initialOrders={orders || []} />
 }
