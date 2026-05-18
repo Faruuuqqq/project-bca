@@ -114,9 +114,9 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton={false} className="max-w-[95vw] md:max-w-2xl rounded-[2rem] p-0 flex flex-col bg-white border-none shadow-2xl overflow-hidden h-[85vh] outline-none">
+      <DialogContent showCloseButton={false} className="max-w-[95vw] md:max-w-2xl lg:max-w-4xl rounded-[2rem] p-0 flex flex-col bg-white border-none shadow-2xl overflow-hidden h-[85vh] outline-none">
         {/* HEADER - Fixed at top */}
-        <DialogHeader className="p-6 bg-white shrink-0 border-b flex flex-row items-center justify-between z-10">
+        <DialogHeader className="p-6 md:p-8 lg:p-10 bg-white shrink-0 border-b flex flex-row items-center justify-between z-10">
           <div className="space-y-1">
             <DialogTitle className="text-xl md:text-2xl font-black text-[#3d2b1f] uppercase tracking-tight">{menu.name}</DialogTitle>
             <p className="text-xs text-zinc-400 font-medium italic line-clamp-1">{menu.description}</p>
@@ -127,12 +127,12 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
         </DialogHeader>
 
         {/* SCROLL AREA - Bagian yang bisa digeser */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 bg-white touch-pan-y custom-scrollbar">
-          <div className="space-y-8 pb-32">
+        <div className="flex-1 overflow-y-auto px-6 md:px-8 lg:px-12 py-4 bg-white touch-pan-y custom-scrollbar">
+          <div className="space-y-8 lg:space-y-10 pb-32">
             {menu.menu_options?.map((opt: any) => (
-              <div key={opt.id} className="space-y-4">
+              <div key={opt.id} className="space-y-4 lg:space-y-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-black text-[#3d2b1f] uppercase tracking-tight">
+                  <h3 className="text-lg lg:text-xl font-black text-[#3d2b1f] uppercase tracking-tight">
                     {opt.name}
                     {opt.is_required && <span className="text-[#d42c2c] ml-1">*</span>}
                   </h3>
@@ -145,16 +145,16 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
                   <RadioGroup 
                     value={selectedOptions[opt.id]?.[0] || ""} 
                     onValueChange={(val) => handleToggleOption(opt.id, val, 'single')}
-                    className="space-y-3"
+                    className="space-y-3 lg:space-y-4"
                   >
                     {opt.menu_option_values?.map((val: any) => (
-                      <div key={val.id} className="flex items-center justify-between rounded-2xl border-2 p-4 transition-all has-[:checked]:border-brand-primary has-[:checked]:bg-brand-primary/5 cursor-pointer active:bg-zinc-50">
-                        <div className="flex items-center gap-3">
+                      <div key={val.id} className="flex items-center justify-between rounded-2xl lg:rounded-3xl border-2 p-4 lg:p-6 transition-all has-[:checked]:border-brand-primary has-[:checked]:bg-brand-primary/5 cursor-pointer active:bg-zinc-50">
+                        <div className="flex items-center gap-3 lg:gap-4">
                           <RadioGroupItem value={val.id} id={val.id} className="border-2 text-brand-primary" />
-                          <Label htmlFor={val.id} className="font-bold text-[#3d2b1f] cursor-pointer flex-1">{val.label}</Label>
+                          <Label htmlFor={val.id} className="font-bold text-[#3d2b1f] text-sm lg:text-base cursor-pointer flex-1">{val.label}</Label>
                         </div>
                         {Number(val.extra_price) > 0 && (
-                          <span className="text-sm font-black text-brand-primary">
+                          <span className="text-sm lg:text-base font-black text-brand-primary">
                             +Rp {new Intl.NumberFormat('id-ID').format(val.extra_price)}
                           </span>
                         )}
@@ -162,20 +162,20 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
                     ))}
                   </RadioGroup>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-3 lg:space-y-4">
                     {opt.menu_option_values?.map((val: any) => (
-                      <div key={val.id} className="flex items-center justify-between rounded-2xl border-2 p-4 transition-all has-[button[data-state=checked]]:border-brand-primary has-[button[data-state=checked]]:bg-brand-primary/5 cursor-pointer active:bg-zinc-50">
-                        <div className="flex items-center gap-3">
+                      <div key={val.id} className="flex items-center justify-between rounded-2xl lg:rounded-3xl border-2 p-4 lg:p-6 transition-all has-[button[data-state=checked]]:border-brand-primary has-[button[data-state=checked]]:bg-brand-primary/5 cursor-pointer active:bg-zinc-50">
+                        <div className="flex items-center gap-3 lg:gap-4">
                           <Checkbox 
                             id={val.id} 
                             checked={selectedOptions[opt.id]?.includes(val.id)}
                             onCheckedChange={() => handleToggleOption(opt.id, val.id, 'multiple')}
                             className="border-2 data-[state=checked]:bg-brand-primary data-[state=checked]:border-brand-primary"
                           />
-                          <Label htmlFor={val.id} className="font-bold text-[#3d2b1f] cursor-pointer flex-1">{val.label}</Label>
+                          <Label htmlFor={val.id} className="font-bold text-[#3d2b1f] text-sm lg:text-base cursor-pointer flex-1">{val.label}</Label>
                         </div>
                         {Number(val.extra_price) > 0 && (
-                          <span className="text-sm font-black text-brand-primary">
+                          <span className="text-sm lg:text-base font-black text-brand-primary">
                             +Rp {new Intl.NumberFormat('id-ID').format(val.extra_price)}
                           </span>
                         )}
@@ -189,37 +189,37 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
         </div>
 
         {/* FOOTER - Fixed at bottom */}
-        <DialogFooter className="bg-white border-t p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] shrink-0 z-10 flex flex-col gap-4">
-          <div className="w-full flex items-center justify-between">
-            <div className="flex items-center gap-4 bg-zinc-100 p-1 rounded-2xl">
+        <DialogFooter className="bg-white border-t p-6 md:p-8 lg:p-10 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] shrink-0 z-10 flex flex-col gap-4 lg:gap-6">
+          <div className="w-full flex flex-col lg:flex-row items-center justify-between gap-4 lg:gap-6">
+            <div className="flex items-center gap-4 bg-zinc-100 p-1 rounded-2xl lg:rounded-3xl">
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-12 w-12 rounded-xl bg-white shadow-sm"
+                className="h-12 w-12 lg:h-14 lg:w-14 rounded-xl lg:rounded-2xl bg-white shadow-sm"
                 onClick={() => setQuantity(q => Math.max(1, q - 1))}
               >
-                <Minus size={20} />
+                <Minus size={20} className="lg:w-6 lg:h-6" />
               </Button>
-              <span className="text-2xl font-black w-8 text-center text-brand-primary">{quantity}</span>
+              <span className="text-2xl lg:text-3xl font-black w-8 text-center text-brand-primary">{quantity}</span>
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-12 w-12 rounded-xl bg-white shadow-sm"
+                className="h-12 w-12 lg:h-14 lg:w-14 rounded-xl lg:rounded-2xl bg-white shadow-sm"
                 onClick={() => setQuantity(q => q + 1)}
               >
-                <Plus size={20} />
+                <Plus size={20} className="lg:w-6 lg:h-6" />
               </Button>
             </div>
             <div className="text-right">
-              <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest leading-none mb-1">Total</p>
-              <p className="text-2xl font-black text-brand-primary tracking-tighter">
+              <p className="text-[10px] lg:text-xs font-black uppercase text-zinc-400 tracking-widest leading-none mb-1">Total</p>
+              <p className="text-2xl lg:text-3xl font-black text-brand-primary tracking-tighter">
                 Rp {new Intl.NumberFormat('id-ID').format(totalPrice)}
               </p>
             </div>
           </div>
           
           <Button 
-            className="w-full h-16 rounded-[1.5rem] bg-brand-primary text-white text-lg font-black hover:bg-blue-900 disabled:opacity-50 shadow-xl shadow-blue-100 active:scale-[0.98] transition-all"
+            className="w-full h-16 lg:h-18 rounded-[1.5rem] lg:rounded-[2rem] bg-brand-primary text-white text-lg lg:text-xl font-black hover:bg-blue-900 disabled:opacity-50 shadow-xl shadow-blue-100 active:scale-[0.98] transition-all"
             disabled={isAddDisabled()}
             onClick={handleAddToCart}
           >

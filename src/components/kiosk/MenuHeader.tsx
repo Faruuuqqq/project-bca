@@ -45,7 +45,7 @@ export function MenuHeader() {
         {/* Sisi Kiri: Logo & Navigasi */}
         <div className="flex items-center gap-3 md:gap-8">
           <Link href="/">
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-all active:scale-90 border border-white/20">
+            <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-all active:scale-90 border border-white/20">
               <ChevronLeft size={20} className="stroke-[3]" />
             </Button>
           </Link>
