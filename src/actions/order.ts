@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { CartItem } from '@/store/cart'
-import { bcaClient } from '@/lib/bca'
+import { generateBcaQRIS } from '@/lib/bca'
 
 export async function createOrder(data: {
   items: CartItem[]
@@ -77,18 +77,12 @@ export async function createOrder(data: {
     }
   }
 
-  // 4. Handle BCA QRIS Payment (Direct API)
+  // 4. Handle BCA QRIS Payment (Real SNAP API)
   if (data.paymentMethod === 'QRIS') {
     try {
       // Generate QRIS string using BCA SNAP API
-      const qrContent = await bcaClient.generateQR(order.id, totalPrice)
+      const qrContent = await generateBcaQRIS(order.id, totalPrice)
       
-      // Update order with BCA Reference (reusing midtrans_order_id column for now)
-      await supabase
-        .from('orders')
-        .update({ midtrans_order_id: order.id }) // Should be renamed in DB eventually
-        .eq('id', order.id)
-
       return {
         success: true,
         orderId: order.id,
