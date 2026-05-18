@@ -69,14 +69,29 @@ function ageTier(elapsedMin: number): AgeTier {
 }
 
 function ElapsedTimer({ startTime }: { startTime: string }) {
-  const [elapsed, setElapsed] = useState(() => computeElapsed(startTime))
+  const [elapsed, setElapsed] = useState<{ minutes: number; seconds: number } | null>(null)
 
   useEffect(() => {
+    // Set initial elapsed on mount (after hydration)
     const tick = () => setElapsed(computeElapsed(startTime))
     tick()
     const interval = setInterval(tick, 1000)
     return () => clearInterval(interval)
   }, [startTime])
+
+  // During SSR/hydration, render empty or placeholder
+  if (elapsed === null) {
+    return (
+      <div
+        className="flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold text-muted-foreground bg-muted/30 rounded-md"
+        role="timer"
+        aria-label="Menghitung waktu..."
+      >
+        <Timer size={12} aria-hidden="true" />
+        <span className="tabular-nums">--:--</span>
+      </div>
+    )
+  }
 
   const tier = ageTier(elapsed.minutes)
 
