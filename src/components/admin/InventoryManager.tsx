@@ -26,11 +26,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Package, History, ArrowUpRight, ArrowDownLeft, Search, Settings2 } from 'lucide-react'
+import { History, ArrowUpRight, ArrowDownLeft, Search, Settings2, Plus, Minus, ChevronRight } from 'lucide-react'
 import { adjustStock } from '@/actions/admin'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
+import { cn, formatDateTime } from '@/lib/utils'
+import { adminTokens } from '@/components/admin/_tokens'
 
 interface InventoryManagerProps {
   initialMenus: any[]
@@ -40,210 +42,365 @@ interface InventoryManagerProps {
 export function InventoryManager({ initialMenus, initialHistory }: InventoryManagerProps) {
   const router = useRouter()
   const [isAdjustDialogOpen, setIsAdjustDialogOpen] = useState(false)
+  const [adjustTarget, setAdjustTarget] = useState<{ id: string; name: string; stock: number } | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [loadingId, setLoadingId] = useState<string | null>(null)
 
+  // Quick +1 / -1 adjustment
+  const handleQuickAdjust = async (menuId: string, menuName: string, amount: number) => {
+    setLoadingId(menuId)
+    try {
+      await adjustStock(menuId, amount, amount > 0 ? 'Quick add' : 'Quick reduce')
+      toast.success(`${menuName}: ${amount > 0 ? '+' : ''}${amount} porsi`)
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message)
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
+  // Custom amount adjustment via dialog
   const handleAdjustStock = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
-    const menuId = formData.get('menu_id') as string
-    const amount = parseInt(formData.get('amount') as string)
+    const menuId = adjustTarget?.id || (formData.get('menu_id') as string)
+    const amount = parseInt(formData.get('amount') as string, 10)
     const reason = formData.get('reason') as string
 
     try {
       await adjustStock(menuId, amount, reason)
       toast.success('Stok berhasil diperbarui')
       setIsAdjustDialogOpen(false)
+      setAdjustTarget(null)
       router.refresh()
     } catch (error: any) {
       toast.error(error.message)
     }
   }
 
-  const filteredMenus = (initialMenus || []).filter(m => 
+  const openEditDialog = (menu: any) => {
+    setAdjustTarget({ id: menu.id, name: menu.name, stock: menu.current_stock })
+    setIsAdjustDialogOpen(true)
+  }
+
+  const filteredMenus = (initialMenus || []).filter((m) =>
     m.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700 -mt-4 md:-mt-6">
-      {/* SECTION: STOCK OVERVIEW - Minimal Header */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between py-2">
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <h3 className="text-2xl font-black text-[#3d2b1f] uppercase tracking-tighter">
-                  Stok Barang
-                </h3>
-                <Badge className="bg-brand-primary text-white text-[10px] px-2 py-0 rounded-md font-black shadow-sm">
-                  {initialMenus.length} ITEMS
-                </Badge>
-              </div>
-              <div className="flex items-center gap-2 mt-0.5">
-                 <div className="h-1.5 w-1.5 rounded-full bg-brand-secondary" />
-                 <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-[0.2em]">Monitoring of raw material availability</p>
-              </div>
-            </div>
+    <div className="space-y-6 animate-in fade-in duration-300">
+      {/* HEADER */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className={adminTokens.pageTitle}>Stok Barang</h1>
+            <Badge className="bg-brand-primary text-white text-xs px-2 py-0.5 font-bold rounded-md">
+              {initialMenus.length} ITEM
+            </Badge>
           </div>
-          <div className="flex gap-4 items-center">
-            <div className="relative hidden lg:block">
-               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-300" size={16} />
-               <Input 
-                 placeholder="Cari menu..." 
-                 value={searchTerm}
-                 onChange={(e) => setSearchTerm(e.target.value)}
-                 className="h-10 pl-10 rounded-xl border-2 border-zinc-50 bg-white w-56 focus:bg-white transition-all text-xs"
-               />
-            </div>
-            <Button 
-              onClick={() => setIsAdjustDialogOpen(true)}
-              className="bg-brand-primary hover:bg-blue-900 rounded-xl h-10 px-6 font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-100"
-            >
-              Update Stok
-            </Button>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand-secondary" aria-hidden="true" />
+            <p className={adminTokens.pageSubtitle}>Monitoring ketersediaan bahan baku</p>
           </div>
         </div>
+        <div className="flex gap-3 items-center">
+          <div className="relative w-full sm:w-auto">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              size={14}
+              aria-hidden="true"
+            />
+            <Input
+              placeholder="Cari menu..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              aria-label="Cari menu"
+              className="h-10 pl-9 rounded-xl border border-border bg-card w-full sm:w-56 text-sm"
+            />
+          </div>
+          <Button
+            onClick={() => {
+              setAdjustTarget(null)
+              setIsAdjustDialogOpen(true)
+            }}
+            className={cn(
+              'bg-brand-primary hover:bg-brand-primary/90 active:bg-brand-primary/80 text-white rounded-xl h-11 min-h-[44px] px-5 font-semibold text-sm shadow-sm transition-colors',
+              adminTokens.focus
+            )}
+          >
+            Update Stok
+          </Button>
+        </div>
+      </div>
 
-        <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-zinc-100">
+      {/* STOCK TABLE */}
+      <div className="bg-card rounded-2xl shadow-sm overflow-hidden border border-border">
+        <div className="overflow-x-auto touch-scroll">
           <Table>
-            <TableHeader className="bg-zinc-50/50">
-              <TableRow className="border-none">
-                <TableHead className="font-black uppercase text-[10px] tracking-widest text-zinc-400 pl-8 py-5">Nama Menu</TableHead>
-                <TableHead className="font-black uppercase text-[10px] tracking-widest text-zinc-400">Kategori</TableHead>
-                <TableHead className="font-black uppercase text-[10px] tracking-widest text-zinc-400">Stok Saat Ini</TableHead>
-                <TableHead className="text-right font-black uppercase text-[10px] tracking-widest text-zinc-400 pr-8">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredMenus.map((menu) => (
-                <TableRow key={menu.id} className="hover:bg-zinc-50/50 transition-colors border-zinc-50">
-                  <TableCell className="pl-8 py-5">
-                    <p className="font-black text-[#3d2b1f] uppercase text-sm tracking-tight">{menu.name}</p>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="bg-zinc-100 text-zinc-500 border-none font-bold text-[9px] uppercase px-2 py-0.5">
-                      {menu.categories?.name}
+          <TableHeader className="bg-muted/40">
+            <TableRow className="border-border">
+              <TableHead className={cn(adminTokens.tableHeader, 'pl-6 py-4')}>
+                Nama Menu
+              </TableHead>
+              <TableHead className={cn(adminTokens.tableHeader, 'py-4')}>Kategori</TableHead>
+              <TableHead className={cn(adminTokens.tableHeader, 'py-4')}>Stok</TableHead>
+              <TableHead className={cn(adminTokens.tableHeader, 'py-4')}>Status</TableHead>
+              <TableHead className={cn(adminTokens.tableHeader, 'text-right pr-6 py-4')}>
+                Aksi
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredMenus.map((menu) => (
+              <TableRow
+                key={menu.id}
+                className="hover:bg-muted/30 transition-colors border-border"
+              >
+                <TableCell className="pl-6 py-4">
+                  <p className="font-bold text-sm text-foreground">{menu.name}</p>
+                </TableCell>
+                <TableCell className="py-4">
+                  <Badge
+                    variant="secondary"
+                    className="bg-muted text-muted-foreground border-none font-semibold text-xs px-2 py-0.5"
+                  >
+                    {menu.categories?.name}
+                  </Badge>
+                </TableCell>
+                <TableCell className="py-4">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className={cn(
+                      'text-lg font-bold tabular-nums',
+                      menu.current_stock <= 10 ? 'text-red-600' : 'text-brand-primary'
+                    )}>
+                      {menu.current_stock}
+                    </span>
+                    <span className="text-xs text-muted-foreground font-medium">porsi</span>
+                  </div>
+                </TableCell>
+                <TableCell className="py-4">
+                  {menu.current_stock <= 10 ? (
+                    <Badge className="bg-red-500 text-white uppercase text-xs font-semibold tracking-wide">
+                      Critical
                     </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                       <span className="text-xl font-black text-brand-primary tabular-nums">{menu.current_stock}</span>
-                       <span className="text-[10px] font-bold text-zinc-300 uppercase">Porsi</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right pr-8">
-                    {menu.current_stock <= 10 ? (
-                      <Badge className="bg-red-500 animate-pulse uppercase text-[9px] font-black tracking-widest">
-                        Critical Stock
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-green-500 uppercase text-[9px] font-black tracking-widest">
-                        Aman
-                      </Badge>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
-      {/* SECTION: MOVEMENT HISTORY */}
-      <div className="space-y-6">
-        <div className="flex items-center gap-4 px-2">
-           <History className="text-brand-primary" size={24} />
-           <h3 className="text-xl font-black text-[#3d2b1f] uppercase tracking-tight">Riwayat Perubahan</h3>
-        </div>
-
-        <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-zinc-100">
-          <Table>
-            <TableHeader className="bg-zinc-50/50">
-              <TableRow className="border-none">
-                <TableHead className="font-black uppercase text-[10px] tracking-widest text-zinc-400 pl-8 py-5">Waktu</TableHead>
-                <TableHead className="font-black uppercase text-[10px] tracking-widest text-zinc-400">Item</TableHead>
-                <TableHead className="font-black uppercase text-[10px] tracking-widest text-zinc-400">Tipe</TableHead>
-                <TableHead className="font-black uppercase text-[10px] tracking-widest text-zinc-400">Jumlah</TableHead>
-                <TableHead className="font-black uppercase text-[10px] tracking-widest text-zinc-400">Alasan</TableHead>
+                  ) : (
+                    <Badge className="bg-emerald-500 text-white uppercase text-xs font-semibold tracking-wide">
+                      Aman
+                    </Badge>
+                  )}
+                </TableCell>
+                <TableCell className="text-right pr-6 py-4">
+                  <div className="flex items-center justify-end gap-1">
+                    {/* Quick -1 */}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label={`Kurangi 1 stok ${menu.name}`}
+                      disabled={loadingId === menu.id || menu.current_stock <= 0}
+                      className="h-9 w-9 min-h-[44px] min-w-[44px] rounded-lg border-red-200 text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors"
+                      onClick={() => handleQuickAdjust(menu.id, menu.name, -1)}
+                    >
+                      <Minus size={16} aria-hidden="true" />
+                    </Button>
+                    {/* Quick +1 */}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label={`Tambah 1 stok ${menu.name}`}
+                      disabled={loadingId === menu.id}
+                      className="h-9 w-9 min-h-[44px] min-w-[44px] rounded-lg border-emerald-200 text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 transition-colors"
+                      onClick={() => handleQuickAdjust(menu.id, menu.name, 1)}
+                    >
+                      <Plus size={16} aria-hidden="true" />
+                    </Button>
+                    {/* Edit Stok (custom amount) */}
+                    <Button
+                      variant="ghost"
+                      aria-label={`Edit stok ${menu.name}`}
+                      className="h-9 min-h-[44px] px-3 rounded-lg text-xs font-semibold text-brand-primary hover:bg-blue-50 active:bg-blue-100 transition-colors"
+                      onClick={() => openEditDialog(menu)}
+                    >
+                      <Settings2 size={14} className="mr-1" aria-hidden="true" />
+                      Edit
+                    </Button>
+                  </div>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(initialHistory || []).map((m) => (
-                <TableRow key={m.id} className="hover:bg-zinc-50/50 transition-colors border-zinc-50">
-                  <TableCell className="pl-8 py-4 text-[11px] font-bold text-zinc-400">
-                    {new Date(m.created_at).toLocaleString('id-ID')}
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-black text-[#3d2b1f] uppercase text-xs">{m.menus?.name}</p>
-                  </TableCell>
-                  <TableCell>
-                    {m.movement_type === 'in' ? (
-                      <div className="flex items-center gap-1.5 text-green-600 font-black text-[10px] uppercase bg-green-50 px-2 py-1 rounded-lg border border-green-100 w-fit">
-                        <ArrowUpRight size={12} /> Masuk
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 text-red-600 font-black text-[10px] uppercase bg-red-50 px-2 py-1 rounded-lg border border-red-100 w-fit">
-                        <ArrowDownLeft size={12} /> Keluar
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="font-black text-sm tabular-nums">
-                    {m.amount > 0 ? `+${m.amount}` : m.amount}
-                  </TableCell>
-                  <TableCell className="text-xs text-zinc-500 font-medium italic">
-                    {m.reason}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
+            ))}
+            {filteredMenus.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-10">
+                  Tidak ada menu ditemukan.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
           </Table>
         </div>
       </div>
 
-      {/* STOCK ADJUST DIALOG - Premium Solid */}
-      <Dialog open={isAdjustDialogOpen} onOpenChange={setIsAdjustDialogOpen}>
-        <DialogContent showCloseButton={false} className="max-w-md rounded-[2.5rem] bg-white border-none shadow-2xl p-0 overflow-hidden outline-none">
-          <form onSubmit={handleAdjustStock}>
-            <DialogHeader className="p-8 border-b bg-zinc-50/30">
-              <DialogTitle className="text-2xl font-black text-[#3d2b1f] uppercase tracking-tight flex items-center gap-3">
-                <Settings2 className="text-brand-primary" /> Penyesuaian Stok
-              </DialogTitle>
-            </DialogHeader>
-            <div className="p-8 space-y-6">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">Pilih Menu</Label>
-                <Select name="menu_id" required>
-                  <SelectTrigger className="rounded-xl border-2 h-12">
-                    <SelectValue placeholder="Pilih menu yang akan diupdate" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-2 rounded-xl shadow-2xl">
-                    {initialMenus?.map(m => (
-                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">Jumlah Perubahan</Label>
-                <div className="relative">
-                   <Input 
-                     name="amount" 
-                     type="number" 
-                     required 
-                     placeholder="Contoh: 10 atau -5"
-                     className="rounded-xl border-2 h-12 focus:border-brand-primary pr-12 font-black" 
-                   />
-                   <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-300 uppercase">Porsi</div>
+      {/* MOVEMENT HISTORY - MINI */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-3">
+            <History className="text-brand-primary" size={20} aria-hidden="true" />
+            <h2 className={adminTokens.sectionTitle}>Riwayat Terbaru</h2>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push('/admin/inventory/history')}
+            className="text-xs font-semibold text-brand-primary hover:bg-blue-50 active:bg-blue-100 rounded-lg px-3 h-9 min-h-[44px]"
+          >
+            Lihat Semua
+            <ChevronRight size={14} className="ml-1" aria-hidden="true" />
+          </Button>
+        </div>
+
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="divide-y divide-border max-h-[320px] overflow-y-auto touch-scroll">
+            {(initialHistory || []).slice(0, 5).map((m) => (
+              <div key={m.id} className="flex items-center gap-3 px-5 py-3.5">
+                {/* Icon */}
+                <div className={cn(
+                  'h-8 w-8 rounded-lg flex items-center justify-center shrink-0',
+                  m.movement_type === 'in'
+                    ? 'bg-emerald-50 text-emerald-600'
+                    : 'bg-red-50 text-red-600'
+                )}>
+                  {m.movement_type === 'in' ? (
+                    <ArrowUpRight size={14} aria-hidden="true" />
+                  ) : (
+                    <ArrowDownLeft size={14} aria-hidden="true" />
+                  )}
                 </div>
-                <p className="text-[9px] text-zinc-400 mt-1 font-medium">Gunakan angka negatif untuk mengurangi stok.</p>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-sm text-foreground truncate">{m.menus?.name}</p>
+                    <span className={cn(
+                      'text-xs font-bold tabular-nums shrink-0',
+                      m.movement_type === 'in' ? 'text-emerald-600' : 'text-red-600'
+                    )}>
+                      {m.movement_type === 'in' ? '+' : '-'}{m.quantity}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{m.reason}</p>
+                </div>
+
+                {/* Time */}
+                <span className="text-[10px] text-muted-foreground font-medium tabular-nums shrink-0">
+                  {formatDateTime(m.created_at)}
+                </span>
               </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-1">Alasan Perubahan</Label>
-                <Input name="reason" required placeholder="Contoh: Restock harian atau Barang rusak" className="rounded-xl border-2 h-12 focus:border-brand-primary" />
+            ))}
+            {(!initialHistory || initialHistory.length === 0) && (
+              <div className="text-center text-sm text-muted-foreground py-10">
+                Belum ada riwayat perubahan.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ADJUST DIALOG */}
+      <Dialog open={isAdjustDialogOpen} onOpenChange={(open) => {
+        setIsAdjustDialogOpen(open)
+        if (!open) setAdjustTarget(null)
+      }}>
+        <DialogContent
+          showCloseButton={false}
+          className="max-w-md rounded-2xl bg-card border-border shadow-md p-0 overflow-hidden"
+        >
+          <form onSubmit={handleAdjustStock}>
+            <DialogHeader className="p-6 border-b border-border">
+              <DialogTitle className="text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
+                <Settings2 className="text-brand-primary" size={18} aria-hidden="true" />
+                {adjustTarget ? `Edit Stok: ${adjustTarget.name}` : 'Penyesuaian Stok'}
+              </DialogTitle>
+              {adjustTarget && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Stok saat ini: <span className="font-bold text-foreground tabular-nums">{adjustTarget.stock} porsi</span>
+                </p>
+              )}
+            </DialogHeader>
+            <div className="p-6 space-y-4">
+              {!adjustTarget && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Pilih Menu
+                  </Label>
+                  <Select name="menu_id" required>
+                    <SelectTrigger className="rounded-xl border border-border h-11 min-h-[44px]">
+                      <SelectValue placeholder="Pilih menu yang akan diupdate" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border border-border rounded-xl shadow-md">
+                      {initialMenus?.map((m) => (
+                        <SelectItem key={m.id} value={m.id} className="min-h-[44px]">
+                          {m.name} ({m.current_stock} porsi)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {adjustTarget && (
+                <input type="hidden" name="menu_id" value={adjustTarget.id} />
+              )}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Jumlah Perubahan
+                </Label>
+                <div className="relative">
+                  <Input
+                    name="amount"
+                    type="number"
+                    step="1"
+                    inputMode="numeric"
+                    required
+                    placeholder="Contoh: 10 atau -5"
+                    className="rounded-xl border border-border h-11 min-h-[44px] pr-14 font-semibold text-base"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground uppercase">
+                    porsi
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Gunakan angka positif untuk menambah, negatif untuk mengurangi (misal: -5).
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Alasan Perubahan
+                </Label>
+                <Input
+                  name="reason"
+                  required
+                  placeholder="Contoh: Restock harian"
+                  className="rounded-xl border border-border h-11 min-h-[44px] text-base"
+                />
               </div>
             </div>
-            <DialogFooter className="p-8 bg-zinc-50 border-t flex flex-row gap-3">
-              <Button type="button" variant="ghost" onClick={() => setIsAdjustDialogOpen(false)} className="flex-1 rounded-xl font-black text-xs uppercase text-zinc-400">Batalkan</Button>
-              <Button type="submit" className="flex-1 bg-brand-primary hover:bg-blue-900 rounded-xl font-black text-xs uppercase shadow-lg shadow-blue-100 h-12">Update Stok</Button>
+            <DialogFooter className="p-6 bg-muted/30 border-t border-border flex flex-row gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setIsAdjustDialogOpen(false)
+                  setAdjustTarget(null)
+                }}
+                className="flex-1 rounded-xl font-semibold text-sm h-11 min-h-[44px]"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1 bg-brand-primary hover:bg-brand-primary/90 active:bg-brand-primary/80 text-white rounded-xl font-semibold text-sm h-11 min-h-[44px] shadow-sm transition-colors"
+              >
+                Update Stok
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
