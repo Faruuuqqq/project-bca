@@ -1,39 +1,37 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { useCartStore } from '@/store/cart'
 
-export function useIdleTimer(timeoutMs: number = 180000) { // Default 3 minutes
-  const router = useRouter()
-  const clearCart = useCartStore((state) => state.clearCart)
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
-
-  const resetTimer = () => {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    
-    timerRef.current = setTimeout(() => {
-      clearCart()
-      router.push('/')
-    }, timeoutMs)
-  }
+/**
+ * Custom hook to detect user inactivity.
+ * Triggers a callback after X milliseconds of no interaction.
+ */
+export function useIdleTimer(callback: () => void, timeout: number = 120000) {
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
+    const handleEvents = () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      timeoutRef.current = setTimeout(() => {
+        callback()
+      }, timeout)
+    }
+
+    // List of interaction events to monitor
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart']
     
-    const handleEvent = () => resetTimer()
-
-    events.forEach((event) => {
-      document.addEventListener(event, handleEvent)
+    events.forEach(event => {
+      window.addEventListener(event, handleEvents)
     })
 
-    resetTimer()
+    // Start the timer on mount
+    handleEvents()
 
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-      events.forEach((event) => {
-        document.removeEventListener(event, handleEvent)
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      events.forEach(event => {
+        window.removeEventListener(event, handleEvents)
       })
     }
-  }, [router, clearCart, timeoutMs])
+  }, [callback, timeout])
 }

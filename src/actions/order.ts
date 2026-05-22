@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { CartItem } from '@/store/cart'
-import { generateBcaQRIS } from '@/lib/bca'
+import { generateMidtransQRIS } from '@/lib/midtrans'
 
 export async function createOrder(data: {
   items: CartItem[]
@@ -28,6 +28,23 @@ export async function createOrder(data: {
   if (orderError) {
     console.error('Order Error:', orderError)
     throw new Error('Gagal membuat pesanan')
+  }
+
+  // 1.5 LAST-SECOND STOCK CHECK
+  // Verify all items are still available before proceeding
+  const menuIds = data.items.map(i => i.menuId)
+  const { data: currentMenus } = await supabase
+    .from('menus')
+    .select('id, name, current_stock, is_sold_out')
+    .in('id', menuIds)
+
+  for (const item of data.items) {
+    const dbMenu = currentMenus?.find(m => m.id === item.menuId)
+    if (!dbMenu || dbMenu.is_sold_out || dbMenu.current_stock < item.quantity) {
+      // Cleanup the abandoned order header since items failed stock check
+      await supabase.from('orders').delete().eq('id', order.id)
+      throw new Error(`Maaf, stok ${dbMenu?.name || 'menu'} baru saja habis.`)
+    }
   }
 
   // 2. Insert order items
@@ -77,21 +94,27 @@ export async function createOrder(data: {
     }
   }
 
-  // 4. Handle BCA QRIS Payment (Real SNAP API)
+  // 4. Handle QRIS Payment (Midtrans)
   if (data.paymentMethod === 'QRIS') {
     try {
-      // Generate QRIS string using BCA SNAP API
-      const qrContent = await generateBcaQRIS(order.id, totalPrice)
+      // Generate QRIS URL using Midtrans Core API
+      const qrContent = await generateMidtransQRIS(order.id, totalPrice)
       
+      // Update order with Reference
+      await supabase
+        .from('orders')
+        .update({ midtrans_order_id: order.id })
+        .eq('id', order.id)
+
       return {
         success: true,
         orderId: order.id,
-        qrContent: qrContent, // Raw EMVCo string from BCA
+        qrContent: qrContent, // In Midtrans this is the QR URL/String
         queueNumber: order.queue_number
       }
-    } catch (bcaError) {
-      console.error('BCA API Error:', bcaError)
-      throw new Error('Gagal inisialisasi pembayaran BCA QRIS')
+    } catch (error) {
+      console.error('Midtrans API Error:', error)
+      throw new Error('Gagal inisialisasi pembayaran QRIS')
     }
   }
 

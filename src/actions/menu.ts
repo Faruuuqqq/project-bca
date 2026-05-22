@@ -108,3 +108,18 @@ export async function deleteMenu(id: string) {
   revalidatePath('/admin/menus')
   return { success: true }
 }
+
+export async function toggleSoldOut(menuId: string, value: boolean) {
+  const supabase = await createClient()
+  
+  const { error } = await supabase
+    .from('menus')
+    .update({ is_sold_out: value })
+    .eq('id', menuId)
+
+  if (error) throw new Error(error.message)
+  
+  revalidatePath('/admin/menus')
+  revalidatePath('/admin/orders')
+  return { success: true }
+}

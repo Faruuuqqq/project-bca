@@ -8,6 +8,7 @@ import { Loader2, QrCode, ShieldCheck, ArrowRight, ChevronLeft, Wifi, RefreshCw,
 import { useCartStore } from '@/store/cart'
 import { QRCodeSVG } from 'qrcode.react'
 import { toast } from 'sonner'
+import { checkPaymentStatus } from '@/actions/payment'
 
 interface QRISScreenProps {
   orderId: string
@@ -25,6 +26,7 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoaded(true), 800)
+    let isRedirecting = false
     
     const updateTime = () => {
       const now = new Date()
@@ -37,13 +39,30 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
     updateTime()
     const timeTimer = setInterval(updateTime, 1000)
 
+    // LOGIC FIX: Simpan ID interval agar bisa dihentikan
+    const pollingTimer = setInterval(async () => {
+       if (isRedirecting) return
+       try {
+         const result = await checkPaymentStatus(orderId)
+         if (result.status === 'paid' && !isRedirecting) {
+           isRedirecting = true
+           clearInterval(pollingTimer) // HENTIKAN POLLING SEGERA
+           handleSuccess()
+         }
+       } catch (e) {
+         // silent fail
+       }
+    }, 3000) // Dipercepat ke 3 detik agar lebih gesit
+
     const channel = supabase
       .channel(`order-${orderId}`)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
         (payload) => {
-          if (payload.new.payment_status === 'paid') {
+          if (payload.new.payment_status === 'paid' && !isRedirecting) {
+            isRedirecting = true
+            clearInterval(pollingTimer)
             handleSuccess()
           }
         }
@@ -53,6 +72,7 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
     return () => {
       clearTimeout(timer)
       clearInterval(timeTimer)
+      clearInterval(pollingTimer) // Cleanup saat komponen unmount
       supabase.removeChannel(channel)
     }
   }, [orderId, supabase])
@@ -65,22 +85,17 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
   const checkStatusManual = async () => {
     setIsChecking(true)
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('payment_status')
-        .eq('id', orderId)
-        .single()
+      // Logic v1.3: Langsung tanya ke Midtrans, bukan cuma baca DB
+      const result = await checkPaymentStatus(orderId)
       
-      if (error) throw error
-
-      if (data.payment_status === 'paid') {
-        toast.success("Pembayaran Terdeteksi!")
+      if (result.status === 'paid') {
+        toast.success("Pembayaran Berhasil Terdeteksi!")
         handleSuccess()
       } else {
-        toast.info("Belum ada pembayaran terdeteksi. Silakan scan QR Code.")
+        toast.info("Belum ada pembayaran lunas. Silakan scan & bayar terlebih dahulu.")
       }
     } catch (e) {
-      toast.error("Gagal mengecek status. Coba lagi nanti.")
+      toast.error("Gagal mengecek status ke bank. Coba lagi nanti.")
     } finally {
       setIsChecking(false)
     }
@@ -161,14 +176,25 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
                   Pindai QRIS
                 </div>
                 
-                <div className="bg-white p-3 rounded-[2rem] border-4 border-zinc-50 shadow-inner">
-                  <QRCodeSVG 
-                    value={qrContent} 
-                    size={280}
-                    level="H"
-                    includeMargin={false}
-                    className="max-w-full h-auto"
-                  />
+                <div className="bg-white p-3 rounded-[2rem] border-4 border-zinc-50 shadow-inner overflow-hidden flex items-center justify-center min-h-[300px] min-w-[300px]">
+                  {qrContent ? (
+                    qrContent.startsWith('http') ? (
+                      <img src={qrContent} alt="QRIS" className="w-full h-full object-contain" />
+                    ) : (
+                      <QRCodeSVG 
+                        value={qrContent} 
+                        size={280}
+                        level="H"
+                        includeMargin={false}
+                        className="max-w-full h-auto"
+                      />
+                    )
+                  ) : (
+                    <div className="flex flex-col items-center gap-4 text-zinc-300">
+                      <AlertCircle size={48} />
+                      <p className="text-[10px] font-black uppercase tracking-widest text-center px-8">Gagal memuat QRIS. Silakan coba lagi.</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-8 flex flex-col items-center gap-2 opacity-40">
