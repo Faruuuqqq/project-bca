@@ -1,0 +1,124 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { ChevronRight } from 'lucide-react'
+
+const SLIDES = [
+  {
+    image: 'https://babe.com.my/wp-content/uploads/2025/04/nasi-ayam-penyet-recipe-smashed-fried-chicken-rice-1745379018.jpg',
+    name: 'Paket Nasi Ayam Penyet',
+    price: '16.000',
+    desc: 'Lengkap dengan Tahu, Tempe, dan Sambal Khas'
+  },
+  {
+    image: 'https://www.dapurkobe.co.id/wp-content/uploads/kulit-ayam-crispy-geprek.jpg',
+    name: 'Ayam Geprek Krispi',
+    price: '10.000',
+    desc: 'Pedasnya Mantap, Ayamnya Gurih Pisan!'
+  },
+  {
+    image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSNNPSFeqOUD08ZnRvZSZkxLo1hItkRvshq1w&s',
+    name: 'Ayam Goreng Utuh',
+    price: '35.000',
+    desc: 'Satu Ekor Ayam Ungkep Spesial Kalintang'
+  },
+  {
+    image: 'https://img-global.cpcdn.com/recipes/4650eb62c0c70a2f/680x781cq80/bacem-kepala-ayam-ala-angkringan-foto-resep-utama.jpg',
+    name: 'Sate Kepala Ayam',
+    price: '3.000',
+    desc: 'Bumbu Ungkep Meresap Sampai ke Tulang'
+  }
+]
+
+export default function AttractScreen() {
+  const router = useRouter()
+  const [currentSlide, setCurrentSlide] = useState(0)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % SLIDES.length)
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [])
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black overflow-hidden cursor-pointer group"
+      onClick={() => router.push('/order-type')}
+    >
+      {/* Background Slideshow */}
+      {SLIDES.map((slide, index) => (
+        <div
+          key={index}
+          className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
+            index === currentSlide ? 'opacity-100 scale-105' : 'opacity-0 scale-100'
+          }`}
+        >
+          {/* VIGNETTE OVERLAY: Menghitamkan pinggir & bawah agar teks menonjol */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10" />
+          <div className="absolute inset-0 bg-black/20 z-0" /> {/* Dimmer tambahan */}
+          
+          <img 
+            src={slide.image} 
+            alt={slide.name}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      ))}
+
+      {/* Floating Logo Overlay */}
+      <div className="absolute top-10 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center animate-in fade-in slide-in-from-top duration-1000">
+        <img src="/logo-kalintang.png" alt="Logo" className="h-40 md:h-56 w-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]" />
+      </div>
+
+      {/* Content Overlay */}
+      <div className="absolute inset-x-0 bottom-0 z-20 p-12 md:p-24 flex flex-col items-center text-center space-y-8">
+        
+        <div className="space-y-2 animate-in fade-in slide-in-from-bottom duration-700 delay-300">
+          {/* TEXT SHADOW: Menambahkan bayangan hitam pada teks agar tidak nyaru */}
+          <h2 className="text-brand-secondary text-5xl md:text-7xl font-black uppercase tracking-tighter drop-shadow-[0_5px_15px_rgba(0,0,0,0.8)]">
+            {SLIDES[currentSlide].name}
+          </h2>
+          <div className="flex items-center justify-center gap-4">
+            <div className="h-1 w-12 bg-brand-secondary rounded-full shadow-lg" />
+            <p className="text-white text-2xl md:text-4xl font-black tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
+              Hanya Rp {SLIDES[currentSlide].price}
+            </p>
+            <div className="h-1 w-12 bg-brand-secondary rounded-full shadow-lg" />
+          </div>
+          <p className="text-white/90 text-lg md:text-xl font-bold italic drop-shadow-md">
+            "{SLIDES[currentSlide].desc}"
+          </p>
+        </div>
+
+        {/* Pulsing Start Button - BLUE THEME */}
+        <div className="pt-8">
+          <Button 
+            className="h-24 px-16 rounded-full bg-brand-primary text-brand-secondary text-3xl font-black shadow-[0_20px_60px_rgba(6,103,172,0.6)] hover:scale-105 active:scale-95 transition-all animate-pulse flex items-center gap-4 border-4 border-brand-secondary/20"
+          >
+            SENTUH UNTUK MEMULAI
+            <ChevronRight size={40} className="stroke-[4]" />
+          </Button>
+        </div>
+
+        {/* Slide Indicators */}
+        <div className="flex gap-3 pt-4">
+          {SLIDES.map((_, i) => (
+            <div 
+              key={i} 
+              className={`h-2 rounded-full transition-all duration-500 shadow-md ${
+                i === currentSlide ? 'w-12 bg-brand-secondary' : 'w-2 bg-white/30'
+              }`} 
+            />
+          ))}
+        </div>
+
+        <p className="text-white/60 text-[10px] font-black uppercase tracking-[0.6em] pt-4 drop-shadow-md">
+          Ayam Kalintang • Kiosk Terminal #01
+        </p>
+      </div>
+    </div>
+  )
+}
