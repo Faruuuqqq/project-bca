@@ -148,13 +148,27 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
                     className="space-y-3"
                   >
                     {opt.menu_option_values?.map((val: any) => (
-                      <div key={val.id} className="flex items-center justify-between rounded-2xl border-2 p-4 transition-all has-[:checked]:border-brand-primary has-[:checked]:bg-brand-primary/5 cursor-pointer active:bg-zinc-50">
-                        <div className="flex items-center gap-3">
-                          <RadioGroupItem value={val.id} id={val.id} className="border-2 text-brand-primary" />
-                          <Label htmlFor={val.id} className="font-bold text-[#3d2b1f] cursor-pointer flex-1">{val.label}</Label>
+                      <div 
+                        key={val.id} 
+                        onClick={() => handleToggleOption(opt.id, val.id, 'single')}
+                        className="flex items-center justify-between rounded-2xl border-2 p-4 transition-all has-[:checked]:border-brand-primary has-[:checked]:bg-brand-primary/5 cursor-pointer active:bg-zinc-50 hover:border-zinc-300"
+                      >
+                        <div className="flex items-center gap-3 w-full">
+                          <RadioGroupItem 
+                            value={val.id} 
+                            id={val.id} 
+                            className="border-2 text-brand-primary shrink-0" 
+                          />
+                          <Label 
+                            htmlFor={val.id} 
+                            className="font-bold text-[#3d2b1f] cursor-pointer flex-1 py-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {val.label}
+                          </Label>
                         </div>
                         {Number(val.extra_price) > 0 && (
-                          <span className="text-sm font-black text-brand-primary">
+                          <span className="text-sm font-black text-brand-primary shrink-0">
                             +Rp {new Intl.NumberFormat('id-ID').format(val.extra_price)}
                           </span>
                         )}
@@ -164,18 +178,29 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
                 ) : (
                   <div className="space-y-3">
                     {opt.menu_option_values?.map((val: any) => (
-                      <div key={val.id} className="flex items-center justify-between rounded-2xl border-2 p-4 transition-all has-[button[data-state=checked]]:border-brand-primary has-[button[data-state=checked]]:bg-brand-primary/5 cursor-pointer active:bg-zinc-50">
-                        <div className="flex items-center gap-3">
+                      <div 
+                        key={val.id} 
+                        onClick={() => handleToggleOption(opt.id, val.id, 'multiple')}
+                        className="flex items-center justify-between rounded-2xl border-2 p-4 transition-all has-[button[data-state=checked]]:border-brand-primary has-[button[data-state=checked]]:bg-brand-primary/5 cursor-pointer active:bg-zinc-50 hover:border-zinc-300"
+                      >
+                        <div className="flex items-center gap-3 w-full">
                           <Checkbox 
                             id={val.id} 
                             checked={selectedOptions[opt.id]?.includes(val.id)}
                             onCheckedChange={() => handleToggleOption(opt.id, val.id, 'multiple')}
-                            className="border-2 data-[state=checked]:bg-brand-primary data-[state=checked]:border-brand-primary"
+                            className="border-2 data-[state=checked]:bg-brand-primary data-[state=checked]:border-brand-primary shrink-0"
+                            onClick={(e) => e.stopPropagation()}
                           />
-                          <Label htmlFor={val.id} className="font-bold text-[#3d2b1f] cursor-pointer flex-1">{val.label}</Label>
+                          <Label 
+                            htmlFor={val.id} 
+                            className="font-bold text-[#3d2b1f] cursor-pointer flex-1 py-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {val.label}
+                          </Label>
                         </div>
                         {Number(val.extra_price) > 0 && (
-                          <span className="text-sm font-black text-brand-primary">
+                          <span className="text-sm font-black text-brand-primary shrink-0">
                             +Rp {new Intl.NumberFormat('id-ID').format(val.extra_price)}
                           </span>
                         )}

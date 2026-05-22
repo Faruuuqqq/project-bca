@@ -5,8 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Clock, Utensils, Timer, CheckCircle2, Monitor, LayoutGrid } from 'lucide-react'
+import { Clock, Utensils, Timer, CheckCircle2, Monitor, LayoutGrid, ZapOff } from 'lucide-react'
 import { completeOrder } from '@/actions/payment'
+import { toggleSoldOut } from '@/actions/menu'
 import { toast } from 'sonner'
 
 function ElapsedTimer({ startTime }: { startTime: string }) {
@@ -154,9 +155,24 @@ export function OrderBoard({ initialOrders }: { initialOrders: any[] }) {
               {/* Ultra Compact Item List */}
               <div className="space-y-1.5 min-h-[100px]">
                 {order.order_items?.map((item: any) => (
-                  <div key={item.id} className="flex gap-2 text-xs leading-tight border-l-2 border-brand-primary/20 pl-2 py-0.5">
-                    <span className="font-black text-brand-primary shrink-0">{item.quantity}x</span>
-                    <span className="font-bold text-[#3d2b1f] uppercase tracking-tight">{item.menu_name}</span>
+                  <div key={item.id} className="flex items-center justify-between group/item border-l-2 border-brand-primary/20 pl-2 py-0.5">
+                    <div className="flex gap-2 text-xs leading-tight">
+                      <span className="font-black text-brand-primary shrink-0">{item.quantity}x</span>
+                      <span className="font-bold text-[#3d2b1f] uppercase tracking-tight">{item.menu_name}</span>
+                    </div>
+                    {/* KILL SWITCH: Tandai Habis */}
+                    <button 
+                      onClick={async () => {
+                        if (confirm(`Tandai ${item.menu_name} sebagai HABIS?`)) {
+                          await toggleSoldOut(item.menu_id, true)
+                          toast.error(`${item.menu_name} sekarang HABIS`)
+                        }
+                      }}
+                      className="opacity-0 group-hover/item:opacity-100 p-1 hover:bg-red-50 text-red-400 rounded transition-all"
+                      title="Tandai Habis"
+                    >
+                      <ZapOff size={12} />
+                    </button>
                   </div>
                 ))}
               </div>
