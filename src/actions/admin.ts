@@ -268,7 +268,7 @@ export async function adjustStock(menuId: string, amount: number, reason: string
 
   const { data: menu, error: fetchError } = await supabase
     .from('menus')
-    .select('current_stock')
+    .select('current_stock, critical_stock_threshold, name')
     .eq('id', menuId)
     .single()
 
@@ -276,23 +276,28 @@ export async function adjustStock(menuId: string, amount: number, reason: string
 
   const newStock = (menu.current_stock || 0) + amount
 
-  const { error: updateError } = await supabase
-    .from('menus')
-    .update({ current_stock: newStock })
-    .eq('id', menuId)
-
-  if (updateError) throw new Error(updateError.message)
-
-  const { error: logError } = await supabase
-    .from('inventory_movements')
-    .insert({
+  // Parallelize: update stock + insert log (independent operations)
+  const [{ error: updateError }, { error: logError }] = await Promise.all([
+    supabase
+      .from('menus')
+      .update({ current_stock: newStock })
+      .eq('id', menuId),
+    supabase.from('inventory_movements').insert({
       menu_id: menuId,
       movement_type: amount >= 0 ? 'in' : 'out',
       quantity: Math.abs(amount),
       reason: reason,
-    })
+    }),
+  ])
 
+  if (updateError) throw new Error(updateError.message)
   if (logError) throw new Error(logError.message)
+
+  // Check and trigger stock alerts if needed (fire-and-forget for performance)
+  // Don't await this - let it happen in the background after response
+  checkAndTriggerStockAlerts(menuId).catch((e) => {
+    console.warn("Stock alert check failed:", e)
+  })
 
   revalidatePath('/admin/inventory')
   return { success: true }

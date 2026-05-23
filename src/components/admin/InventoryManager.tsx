@@ -35,7 +35,6 @@ import { cn, formatDateTime } from '@/lib/utils'
 import { adminTokens } from '@/components/admin/_tokens'
 import { invalidateInventoryCache } from '@/lib/cache'
 import { CriticalStockIndicator, CriticalStockWarning } from '@/components/admin/CriticalStockIndicator'
-import { checkAndTriggerStockAlerts } from '@/actions/admin'
 import { useRealtimeInventory } from '@/hooks/use-realtime-inventory'
 
 interface InventoryItem {
@@ -77,8 +76,8 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
     setLoadingId(menuId)
     const toastId = toast.loading(`Memperbarui stok ${menuName}...`)
     try {
+      // adjustStock now handles stock alert checks internally
       await adjustStock(menuId, amount, amount > 0 ? 'Quick add' : 'Quick reduce')
-      await checkAndTriggerStockAlerts(menuId)
       toast.success(`${menuName}: ${amount > 0 ? '+' : ''}${amount} porsi`, { id: toastId })
       invalidateInventoryCache()
       router.refresh()
@@ -99,8 +98,8 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
 
     const toastId = toast.loading('Menyimpan perubahan stok...')
     try {
+      // adjustStock now handles stock alert checks internally
       await adjustStock(menuId, amount, reason)
-      await checkAndTriggerStockAlerts(menuId)
       toast.success('Stok berhasil diperbarui', { id: toastId })
       invalidateInventoryCache()
       setIsAdjustDialogOpen(false)
