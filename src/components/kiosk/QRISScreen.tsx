@@ -23,6 +23,7 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
   const [isLoaded, setIsLoaded] = useState(false)
   const [currentTime, setCurrentTime] = useState('')
   const [isChecking, setIsChecking] = useState(false)
+  const [nextCheckTime, setNextCheckTime] = useState(0) // FIX #2: Track cooldown
 
   const handleSuccess = useCallback(() => {
     clearCart()
@@ -44,20 +45,27 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
     updateTime()
     const timeTimer = setInterval(updateTime, 1000)
 
-    // LOGIC FIX: Simpan ID interval agar bisa dihentikan
+    // Polling dengan FIX #2: Rate limiting awareness
     const pollingTimer = setInterval(async () => {
        if (isRedirecting) return
        try {
          const result = await checkPaymentStatus(orderId)
+         
+         // FIX #2: Handle rate limiting response
+         if (result.status === 'rate_limited') {
+           console.log('⏱️ Rate limited, backing off polling')
+           return
+         }
+         
          if (result.status === 'paid' && !isRedirecting) {
             isRedirecting = true
-            clearInterval(pollingTimer) // HENTIKAN POLLING SEGERA
+            clearInterval(pollingTimer)
             handleSuccess()
           }
        } catch (e) {
-         // silent fail
+         console.error('Polling error:', e)
        }
-    }, 3000) // Dipercepat ke 3 detik agar lebih gesit
+    }, 3000)
 
     const channel = supabase
       .channel(`order-${orderId}`)
@@ -77,16 +85,32 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
     return () => {
       clearTimeout(timer)
       clearInterval(timeTimer)
-      clearInterval(pollingTimer) // Cleanup saat komponen unmount
+      clearInterval(pollingTimer)
       supabase.removeChannel(channel)
     }
   }, [orderId, supabase, handleSuccess])
 
+  // FIX #2: Add cooldown to manual check button
   const checkStatusManual = async () => {
+    const now = Date.now()
+    
+    // Enforce 2-second cooldown on client side
+    if (now < nextCheckTime) {
+      const waitMs = Math.ceil((nextCheckTime - now) / 1000)
+      toast.warning(`Tunggu ${waitMs} detik sebelum cek lagi`)
+      return
+    }
+    
     setIsChecking(true)
     try {
-      // Logic v1.3: Langsung tanya ke Midtrans, bukan cuma baca DB
       const result = await checkPaymentStatus(orderId)
+      
+      // FIX #2: Handle rate limiting on manual check
+      if (result.status === 'rate_limited') {
+        toast.warning(`Terlalu sering. Coba lagi dalam ${result.retryAfterMs ? Math.ceil(result.retryAfterMs / 1000) : 2}s`)
+        setNextCheckTime(now + (result.retryAfterMs || 2000))
+        return
+      }
       
       if (result.status === 'paid') {
         toast.success("Pembayaran Berhasil Terdeteksi!")
@@ -98,6 +122,8 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
       toast.error("Gagal mengecek status ke bank. Coba lagi nanti.")
     } finally {
       setIsChecking(false)
+      // Set next allowed check time (2 seconds from now)
+      setNextCheckTime(now + 2000)
     }
   }
 

@@ -2,14 +2,31 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { midtransCore } from '@/lib/midtrans'
+import { midtransRateLimiter } from '@/lib/midtrans/rate-limiter'
 
 /**
  * Cek Status Pembayaran ke Midtrans & Update DB (Manual Inquiry)
+ * 
+ * FIX #2: Rate limiting added
+ * - Prevents users from spamming Midtrans API
+ * - Returns clear error if rate limited
+ * - Server-side enforced (can't bypass from client)
  */
 export async function checkPaymentStatus(orderId: string) {
   const supabase = await createClient()
 
   console.log(`🔍 [Inquiry] Checking Midtrans status for Order: ${orderId}`)
+
+  // FIX #2: Rate limiting check
+  const rateLimitCheck = midtransRateLimiter.isAllowed(orderId)
+  if (!rateLimitCheck.allowed) {
+    console.warn(`⏱️ [Rate Limit] Order ${orderId}: ${rateLimitCheck.reason}`)
+    return { 
+      status: 'rate_limited',
+      retryAfterMs: rateLimitCheck.retryAfterMs,
+      error: rateLimitCheck.reason
+    }
+  }
 
   try {
     // 1. Tanya ke Midtrans
