@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getCachedMenusForInventory } from '@/lib/cache/menus'
 import type {
   DashboardRange,
   DashboardStats,
@@ -204,26 +205,31 @@ export async function getDashboardStats(
   }))
 
   // Inventory snapshot (always current state, not range-filtered)
-  const { data: inventoryData } = await supabase
-    .from('menus')
-    .select('id, name, current_stock, price')
+  // Uses React.cache() to deduplicate multiple menus queries in same request
+  const cachedMenus = await getCachedMenusForInventory()
+  const inventoryData = cachedMenus.map((m) => ({
+    id: m.id,
+    name: m.name,
+    current_stock: m.current_stock,
+    price: m.price,
+  }))
 
   const inventoryValue =
-    inventoryData?.reduce(
+    inventoryData.reduce(
       (sum, item) => sum + Number(item.current_stock) * Number(item.price),
       0
-    ) ?? 0
+    )
 
   const inventoryAlerts =
     inventoryData
-      ?.filter((m) => Number(m.current_stock) <= 10)
+      .filter((m) => Number(m.current_stock) <= 10)
       .sort((a, b) => Number(a.current_stock) - Number(b.current_stock))
       .slice(0, 5)
       .map((m) => ({
         id: m.id as string,
         name: m.name as string,
         current_stock: Number(m.current_stock),
-      })) ?? []
+      }))
 
   // Bestsellers — bounded by current range (was lifetime O(N))
   const bestsellerMap = new Map<string, number>()

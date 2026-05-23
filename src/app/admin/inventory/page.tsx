@@ -1,19 +1,14 @@
 import { Suspense } from 'react'
-import { createClient } from '@/lib/supabase/server'
 import { InventoryManager } from '@/components/admin/InventoryManager'
 import { getInventoryHistory, getCriticalStockAlerts } from '@/actions/admin'
 import { StockAlertBanner } from '@/components/admin/StockAlertBanner'
 import InventoryLoading from './loading'
+import { getCachedMenusForInventory } from '@/lib/cache/menus'
 
 async function InventoryContent() {
-  const supabase = await createClient()
-
-  // Parallel fetch: menus + history + alerts
-  const [{ data: menus }, history, criticalAlerts] = await Promise.all([
-    supabase
-      .from('menus')
-      .select('*, categories(name)')
-      .order('name', { ascending: true }),
+  // Parallel fetch: menus (cached) + history + alerts
+  const [menus, history, criticalAlerts] = await Promise.all([
+    getCachedMenusForInventory(),
     getInventoryHistory(),
     getCriticalStockAlerts(),
   ])
@@ -22,7 +17,7 @@ async function InventoryContent() {
     <div className="p-8">
       {criticalAlerts.length > 0 && <StockAlertBanner alerts={criticalAlerts} />}
       <InventoryManager 
-        initialMenus={menus || []} 
+        initialMenus={menus} 
         initialHistory={history || []} 
       />
     </div>

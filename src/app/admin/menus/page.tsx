@@ -1,28 +1,17 @@
 import { Suspense } from 'react'
-import { createClient } from '@/lib/supabase/server'
 import { MenuManager } from '@/components/admin/MenuManager'
 import MenusLoading from './loading'
+import { getCachedCategoriesAndMenus } from '@/lib/cache/menus'
 
 async function MenusContent() {
-  const supabase = await createClient()
-
-  // Parallel fetch: categories + menus
-  const [{ data: categories }, { data: menus }] = await Promise.all([
-    supabase
-      .from('categories')
-      .select('*')
-      .order('sort_order', { ascending: true }),
-    supabase
-      .from('menus')
-      .select('*, categories(name)')
-      .order('created_at', { ascending: false }),
-  ])
+  // Uses React.cache() to deduplicate multiple menus/categories queries in same request
+  const { categories, menus } = await getCachedCategoriesAndMenus()
 
   return (
     <div className="p-8">
       <MenuManager 
-        initialMenus={menus || []} 
-        initialCategories={categories || []} 
+        initialMenus={menus} 
+        initialCategories={categories} 
       />
     </div>
   )
