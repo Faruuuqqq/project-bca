@@ -1,14 +1,13 @@
 // @ts-expect-error midtrans-client has no type declarations
 import midtransClient from 'midtrans-client'
+import { logMidtransTransaction } from './monitor'
 
 /**
  * MIDTRANS API LIBRARY (SOK Ayam Kalintang)
  * Digunakan untuk generate QRIS Dinamis melalui Core API.
  * 
  * FIX #1: Environment variable validation
- * - Prevents silent failures when keys are missing
- * - Throws error at startup instead of at payment time
- * - Makes debugging easier in production
+ * FIX #3: Transaction monitoring & logging
  */
 
 const isProduction = process.env.MIDTRANS_IS_PRODUCTION === 'true'
@@ -40,9 +39,8 @@ export const midtransCore = new midtransClient.CoreApi({
  * Generate Direct QRIS (Gopay/QRIS)
  * Mengembalikan string QR atau URL Image QR
  * 
- * FIX #1 Enhancement: Better error logging
- * - Logs API response times for monitoring
- * - Distinguishes between different error types
+ * FIX #1: Better error logging
+ * FIX #3: Transaction monitoring
  */
 export async function generateMidtransQRIS(orderId: string, amount: number) {
   const startTime = Date.now()
@@ -76,8 +74,30 @@ export async function generateMidtransQRIS(orderId: string, amount: number) {
     
     if (!qrAction) {
       console.error("❌ [Midtrans] No QR action found. Actions available:", response.actions?.map((a: { name: string }) => a.name))
+      
+      // FIX #3: Log failure
+      await logMidtransTransaction({
+        order_id: orderId,
+        transaction_type: 'charge',
+        status: 'failed',
+        amount: amount,
+        error_message: 'No QR action in response',
+        response_time_ms: responseTime,
+        http_status: response.http_status || null,
+      })
+      
       return null
     }
+
+    // FIX #3: Log success
+    await logMidtransTransaction({
+      order_id: orderId,
+      transaction_type: 'charge',
+      status: 'success',
+      amount: amount,
+      response_time_ms: responseTime,
+      http_status: response.http_status || null,
+    })
 
     console.log("👉 [Midtrans] QR URL:", qrAction.url)
     return qrAction.url
@@ -86,10 +106,22 @@ export async function generateMidtransQRIS(orderId: string, amount: number) {
     const errMsg = error instanceof Error ? error.message : String(error)
     console.error(`❌ [Midtrans] Critical Error (${responseTime}ms):`, errMsg)
     
-    if (typeof error === 'object' && error !== null && 'ApiResponse' in error) {
-      const httpStatus = (error as Record<string, unknown>).httpStatusCode || "Unknown"
+    let httpStatus = null
+    if (typeof error === 'object' && error !== null && 'httpStatusCode' in error) {
+      httpStatus = (error as Record<string, unknown>).httpStatusCode as number | null
       console.error("👉 API HTTP Status:", httpStatus)
     }
+    
+    // FIX #3: Log error
+    await logMidtransTransaction({
+      order_id: orderId,
+      transaction_type: 'charge',
+      status: 'failed',
+      amount: amount,
+      error_message: errMsg,
+      response_time_ms: responseTime,
+      http_status: httpStatus,
+    })
     
     return null
   }

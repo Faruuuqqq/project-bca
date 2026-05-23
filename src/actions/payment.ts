@@ -3,17 +3,17 @@
 import { createClient } from '@/lib/supabase/server'
 import { midtransCore } from '@/lib/midtrans'
 import { midtransRateLimiter } from '@/lib/midtrans/rate-limiter'
+import { logMidtransTransaction } from '@/lib/midtrans/monitor'
 
 /**
  * Cek Status Pembayaran ke Midtrans & Update DB (Manual Inquiry)
  * 
  * FIX #2: Rate limiting added
- * - Prevents users from spamming Midtrans API
- * - Returns clear error if rate limited
- * - Server-side enforced (can't bypass from client)
+ * FIX #3: Transaction logging added
  */
 export async function checkPaymentStatus(orderId: string) {
   const supabase = await createClient()
+  const startTime = Date.now()
 
   console.log(`🔍 [Inquiry] Checking Midtrans status for Order: ${orderId}`)
 
@@ -31,7 +31,8 @@ export async function checkPaymentStatus(orderId: string) {
   try {
     // 1. Tanya ke Midtrans
     const transaction = await midtransCore.transaction.status(orderId)
-    console.log(`✅ [Midtrans Response] Order: ${orderId}, Status: ${transaction.transaction_status}`)
+    const responseTime = Date.now() - startTime
+    console.log(`✅ [Midtrans Response] Order: ${orderId}, Status: ${transaction.transaction_status} (${responseTime}ms)`)
 
     // 2. Jika lunas (settlement/capture), update DB
     const isPaid = ['settlement', 'capture', 'success'].includes(transaction.transaction_status)
@@ -47,13 +48,48 @@ export async function checkPaymentStatus(orderId: string) {
         console.error("❌ DB Update Error:", error.message)
         throw error
       }
+      
+      // FIX #3: Log successful payment detection
+      await logMidtransTransaction({
+        order_id: orderId,
+        transaction_type: 'status',
+        status: 'success',
+        response_time_ms: responseTime,
+        http_status: transaction.http_status || null,
+      })
+      
       return { status: 'paid' }
     }
 
+    // FIX #3: Log successful check but payment not yet made
+    await logMidtransTransaction({
+      order_id: orderId,
+      transaction_type: 'status',
+      status: 'success',
+      response_time_ms: responseTime,
+      http_status: transaction.http_status || null,
+    })
+
     return { status: transaction.transaction_status }
   } catch (error: unknown) {
+    const responseTime = Date.now() - startTime
     const errMsg = (error as Error).message
-    console.error("❌ [Midtrans API Error]:", errMsg)
+    console.error(`❌ [Midtrans API Error] (${responseTime}ms):`, errMsg)
+    
+    let httpStatus = null
+    if (typeof error === 'object' && error !== null && 'httpStatusCode' in error) {
+      httpStatus = (error as Record<string, unknown>).httpStatusCode as number | null
+    }
+    
+    // FIX #3: Log the failed API call
+    await logMidtransTransaction({
+      order_id: orderId,
+      transaction_type: 'status',
+      status: 'failed',
+      error_message: errMsg,
+      response_time_ms: responseTime,
+      http_status: httpStatus,
+    })
     
     // Fallback: Jika error tapi di DB sudah paid (mungkin karena webhook duluan)
     const { data } = await supabase
