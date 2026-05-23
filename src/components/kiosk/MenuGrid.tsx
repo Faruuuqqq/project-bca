@@ -22,9 +22,21 @@ import { cn } from '@/lib/utils'
 import { useKioskKeyboard } from '@/hooks/use-kiosk-keyboard'
 import { MenuGridSkeleton } from './MenuGridSkeleton'
 
+interface MenuItemData {
+  id: string
+  name: string
+  price: number
+  image_url?: string | null
+  is_sold_out: boolean
+  current_stock: number
+  category_id: string
+  categories?: { name: string }
+  menu_options?: Array<Record<string, unknown>>
+}
+
 interface MenuGridProps {
   initialCategories: Category[]
-  initialMenus: any[]
+  initialMenus: MenuItemData[]
 }
 
 export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
@@ -40,13 +52,13 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
   const [isSwitchingCategory, setIsSwitchingCategory] = useState(false)
   const switchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const [selectedMenu, setSelectedMenu] = useState<any | null>(null)
+  const [selectedMenu, setSelectedMenu] = useState<MenuItemData | null>(null)
   const [isCustomSheetOpen, setIsCustomSheetOpen] = useState(false)
   const [isCartSheetOpen, setIsCartSheetOpen] = useState(false)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
 
   const [isCreatingOrder, setIsCreatingOrder] = useState(false)
-  const [orderData, setOrderData] = useState<any>(null)
+  const [orderData, setOrderData] = useState<{ orderId: string; qrContent?: string; queueNumber?: string; customerName?: string } | null>(null)
   const [paymentStep, setPaymentStep] = useState<'none' | 'qris' | 'cash'>('none')
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
@@ -99,7 +111,7 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
     }
   }, [])
 
-  const handleMenuClick = useCallback((menu: any) => {
+  const handleMenuClick = useCallback((menu: MenuItemData) => {
     if (menu.is_sold_out || menu.current_stock <= 0) return
 
     if (!menu.menu_options || menu.menu_options.length === 0) {
@@ -138,9 +150,9 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
         setOrderData({ ...result })
         setPaymentStep(method === 'QRIS' ? 'qris' : 'cash')
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Checkout Error:', error)
-      toast.error(error.message || 'Gagal memproses pesanan. Silakan coba lagi.')
+      toast.error((error as Error).message || 'Gagal memproses pesanan. Silakan coba lagi.')
     } finally {
       setIsCreatingOrder(false)
     }
@@ -323,7 +335,7 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
       {paymentStep === 'qris' && orderData && (
         <QRISScreen 
           orderId={orderData.orderId}
-          qrContent={orderData.qrContent}
+          qrContent={orderData.qrContent || ''}
           onCancel={() => setPaymentStep('none')}
         />
       )}
@@ -331,14 +343,14 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
       {paymentStep === 'cash' && orderData && (
         <CashWaitScreen 
           orderId={orderData.orderId}
-          queueNumber={orderData.queueNumber}
+          queueNumber={orderData.queueNumber || ''}
           customerName={orderData.customerName}
           onCancel={() => setPaymentStep('none')}
         />
       )}
 
       <CustomizationSheet 
-        menu={selectedMenu} 
+        menu={selectedMenu as unknown as Parameters<typeof CustomizationSheet>[0]['menu']} 
         open={isCustomSheetOpen} 
         onOpenChange={setIsCustomSheetOpen} 
       />

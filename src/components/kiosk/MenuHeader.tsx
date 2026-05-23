@@ -10,7 +10,9 @@ import Link from 'next/link'
 export function MenuHeader() {
   const orderType = useCartStore((state) => state.orderType)
   const [currentTime, setCurrentTime] = useState('')
-  const [isOnline, setIsOnline] = useState(true)
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  )
 
   useEffect(() => {
     // 1. Time Update
@@ -29,7 +31,6 @@ export function MenuHeader() {
     const updateOnlineStatus = () => setIsOnline(navigator.onLine)
     window.addEventListener('online', updateOnlineStatus)
     window.addEventListener('offline', updateOnlineStatus)
-    setIsOnline(navigator.onLine)
 
     return () => {
       clearInterval(timer)

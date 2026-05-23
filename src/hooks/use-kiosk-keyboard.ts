@@ -127,7 +127,6 @@ export function useKioskKeyboard({
   }, [itemCount])
 
   return {
-    focusedIndex: focusedIndex.current,
     setFocus,
   }
 }

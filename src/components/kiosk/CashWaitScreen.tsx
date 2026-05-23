@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, startTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -32,13 +32,18 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
   const [isLocked, setIsLocked] = useState(false)
   const [backupCode, setBackupCode] = useState('')
 
+  const handleSuccess = useCallback(() => {
+    clearCart()
+    router.push(`/success?id=${orderId}`)
+  }, [clearCart, router, orderId])
+
   useEffect(() => {
     // Load security state from local storage
     const savedAttempts = localStorage.getItem('kiosk_pin_attempts')
     const savedLocked = localStorage.getItem('kiosk_pin_locked')
     
-    if (savedAttempts) setAttempts(parseInt(savedAttempts))
-    if (savedLocked === 'true') setIsLocked(true)
+    if (savedAttempts) startTransition(() => setAttempts(parseInt(savedAttempts)))
+    if (savedLocked === 'true') startTransition(() => setIsLocked(true))
 
     // Realtime subscription
     const channel = supabase
@@ -61,12 +66,7 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [orderId, supabase, onCancel])
-
-  const handleSuccess = () => {
-    clearCart()
-    router.push(`/success?id=${orderId}`)
-  }
+  }, [orderId, supabase, onCancel, handleSuccess])
 
   const handleBackupUnlock = async () => {
     if (backupCode.length < 4) return
@@ -124,8 +124,8 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
         localStorage.removeItem('kiosk_pin_locked')
         handleSuccess()
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Gagal mengonfirmasi pembayaran')
+    } catch (error: unknown) {
+      toast.error((error as Error).message || 'Gagal mengonfirmasi pembayaran')
     } finally {
       setIsConfirming(false)
     }

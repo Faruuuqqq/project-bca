@@ -7,13 +7,32 @@ import { Button } from '@/components/ui/button'
 import { Home, Printer, Loader2, PartyPopper } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 
+interface OrderItemOption {
+  id: string
+  value_label: string
+}
+
+interface OrderItem {
+  id: string
+  menu_name: string
+  quantity: number
+  subtotal: number
+  order_item_options?: OrderItemOption[]
+}
+
+interface Order {
+  queue_number: string
+  total_price: number
+  order_items?: OrderItem[]
+}
+
 function SuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const supabase = createClient()
   const orderId = searchParams.get('id')
   
-  const [order, setOrder] = useState<any>(null)
+  const [order, setOrder] = useState<Order | null>(null)
   const [countdown, setCountdown] = useState(7)
 
   useEffect(() => {
@@ -35,7 +54,7 @@ function SuccessContent() {
         .eq('id', orderId)
         .single()
       
-      if (data) setOrder(data)
+       if (data) setOrder(data as unknown as Order)
     }
 
     fetchOrder()
@@ -81,7 +100,7 @@ function SuccessContent() {
           <div className="bg-brand-primary p-6 text-white text-center relative overflow-hidden">
             <div className="absolute -top-10 -right-10 w-24 h-24 bg-white/10 rounded-full blur-xl" />
             <p className="text-[10px] font-black opacity-70 uppercase tracking-[0.2em] mb-1">Nomor Antrean</p>
-            <h2 className="text-8xl font-black leading-none py-1 tracking-tighter text-brand-secondary drop-shadow-md">
+              <h2 className="text-8xl font-black leading-none py-1 tracking-tighter text-brand-secondary drop-shadow-md">
               {order.queue_number}
             </h2>
             <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mt-1">Terminal #01</p>
@@ -96,13 +115,13 @@ function SuccessContent() {
               </div>
 
               <div className="space-y-2.5 max-h-[180px] overflow-y-auto px-1 custom-scrollbar">
-                {order.order_items?.map((item: any) => (
+                {order.order_items?.map((item: OrderItem) => (
                   <div key={item.id} className="flex justify-between items-start text-xs">
                     <div className="flex-1 pr-4">
                       <p className="font-black text-[#3d2b1f] uppercase leading-tight">{item.quantity}x {item.menu_name}</p>
-                      {item.order_item_options?.length > 0 && (
+                      {item.order_item_options && item.order_item_options.length > 0 && (
                         <p className="text-[9px] text-zinc-400 font-medium italic">
-                          {item.order_item_options.map((o: any) => o.value_label).join(', ')}
+                          {item.order_item_options.map((o: OrderItemOption) => o.value_label).join(', ')}
                         </p>
                       )}
                     </div>

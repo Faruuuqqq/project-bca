@@ -14,7 +14,7 @@ import {
   Store,
   Menu as MenuIcon,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, startTransition } from 'react'
 import { cn } from '@/lib/utils'
 import { adminTokens } from '@/components/admin/_tokens'
 import {
@@ -64,13 +64,13 @@ export default function AdminLayout({
   // Auto-collapse on KDS route. Manual toggle still allowed.
   useEffect(() => {
     if (AUTO_COLLAPSE_ROUTES.some((route) => pathname.startsWith(route))) {
-      setIsCollapsed(true)
+      startTransition(() => setIsCollapsed(true))
     }
   }, [pathname])
 
   // Close mobile drawer on route change.
   useEffect(() => {
-    setIsMobileOpen(false)
+    startTransition(() => setIsMobileOpen(false))
   }, [pathname])
 
   if (pathname === '/admin/login') {

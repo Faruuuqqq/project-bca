@@ -1,7 +1,9 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { OrderBoard } from '@/components/admin/OrderBoard'
+import OrdersLoading from './loading'
 
-export default async function AdminOrdersPage() {
+async function OrdersContent() {
   const supabase = await createClient()
 
   // Active orders for KDS: paid, not yet completed/voided.
@@ -15,4 +17,12 @@ export default async function AdminOrdersPage() {
     .order('created_at', { ascending: true })
 
   return <OrderBoard initialOrders={orders || []} />
+}
+
+export default function AdminOrdersPage() {
+  return (
+    <Suspense fallback={<OrdersLoading />}>
+      <OrdersContent />
+    </Suspense>
+  )
 }

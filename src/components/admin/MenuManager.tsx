@@ -46,9 +46,37 @@ import { Badge } from '@/components/ui/badge'
 import { cn, formatRupiah } from '@/lib/utils'
 import { adminTokens } from '@/components/admin/_tokens'
 
+interface MenuItem {
+  id: string
+  name: string
+  price: number
+  cost_price?: number | null
+  category_id: string
+  image_url?: string | null
+  is_sold_out: boolean
+  current_stock: number
+  description?: string
+  categories?: { name: string }
+  menu_options?: MenuOptionItem[]
+}
+
+interface MenuOptionItem {
+  id: string
+  name: string
+  is_required: boolean
+  selection_type: 'single' | 'multiple'
+  menu_option_values?: MenuOptionValueItem[]
+}
+
+interface MenuOptionValueItem {
+  id: string
+  label: string
+  extra_price: number
+}
+
 interface MenuManagerProps {
   initialCategories: Category[]
-  initialMenus: any[]
+  initialMenus: MenuItem[]
 }
 
 type DeleteTarget =
@@ -60,7 +88,7 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
   const router = useRouter()
   const [isMenuDialogOpen, setIsMenuDialogOpen] = useState(false)
   const [isCatDialogOpen, setIsCatDialogOpen] = useState(false)
-  const [editingMenu, setEditingMenu] = useState<any | null>(null)
+  const [editingMenu, setEditingMenu] = useState<MenuItem | null>(null)
   const [editingCat, setEditingCat] = useState<Category | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null)
   const [activeTab, setActiveTab] = useState<'menu' | 'category'>('menu')
@@ -83,8 +111,8 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
       const url = await uploadMenuImage(formData)
       setImageUrl(url)
       toast.success('Foto berhasil diupload')
-    } catch (error: any) {
-      toast.error(error.message)
+    } catch (error: unknown) {
+      toast.error((error as Error).message)
     } finally {
       setIsUploading(false)
     }
@@ -115,8 +143,8 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
       setEditingMenu(null)
       setImageUrl('')
       router.refresh()
-    } catch (error: any) {
-      toast.error(error.message)
+    } catch (error: unknown) {
+      toast.error((error as Error).message)
     }
   }
 
@@ -135,8 +163,8 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
       setIsCatDialogOpen(false)
       setEditingCat(null)
       router.refresh()
-    } catch (error: any) {
-      toast.error(error.message)
+    } catch (error: unknown) {
+      toast.error((error as Error).message)
     }
   }
 
@@ -162,8 +190,8 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
         toast.success('Kategori berhasil dihapus')
       }
       router.refresh()
-    } catch (error: any) {
-      toast.error(error.message)
+    } catch (error: unknown) {
+      toast.error((error as Error).message)
     } finally {
       setDeleteTarget(null)
     }

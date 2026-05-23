@@ -1,19 +1,28 @@
+import { Suspense } from 'react'
 import { getPaymentHistory, getPaymentStatistics } from '@/actions/admin'
 import PaymentHistoryPage from '@/components/admin/PaymentHistoryPage'
+import PaymentHistoryLoading from './loading'
 
 const ITEMS_PER_PAGE = 20
 
-export default async function PaymentHistoryRoute({
-  searchParams,
+async function PaymentHistoryContent({
+  page,
+  method,
+  from,
+  to,
 }: {
-  searchParams: Promise<{ page?: string; method?: string; from?: string; to?: string }>
+  page: number
+  method?: string
+  from?: string
+  to?: string
 }) {
-  const params = await searchParams
-  const page = Math.max(1, parseInt(params.page || '1', 10))
   const offset = (page - 1) * ITEMS_PER_PAGE
 
-  const { payments, total } = await getPaymentHistory(ITEMS_PER_PAGE, offset)
-  const stats = await getPaymentStatistics(params.from, params.to)
+  // Parallel fetch: payment history + statistics
+  const [{ payments, total }, stats] = await Promise.all([
+    getPaymentHistory(ITEMS_PER_PAGE, offset),
+    getPaymentStatistics(from, to),
+  ])
   const totalPages = Math.ceil((total || 0) / ITEMS_PER_PAGE)
 
   return (
@@ -23,9 +32,29 @@ export default async function PaymentHistoryRoute({
       totalPages={totalPages}
       totalPayments={total || 0}
       stats={stats}
-      methodFilter={params.method}
-      dateFrom={params.from}
-      dateTo={params.to}
+      methodFilter={method}
+      dateFrom={from}
+      dateTo={to}
     />
+  )
+}
+
+export default async function PaymentHistoryRoute({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; method?: string; from?: string; to?: string }>
+}) {
+  const params = await searchParams
+  const page = Math.max(1, parseInt(params.page || '1', 10))
+
+  return (
+    <Suspense fallback={<PaymentHistoryLoading />}>
+      <PaymentHistoryContent
+        page={page}
+        method={params.method}
+        from={params.from}
+        to={params.to}
+      />
+    </Suspense>
   )
 }

@@ -1,4 +1,4 @@
-// @ts-ignore
+// @ts-expect-error midtrans-client has no type declarations
 import midtransClient from 'midtrans-client'
 
 /**
@@ -38,21 +38,22 @@ export async function generateMidtransQRIS(orderId: string, amount: number) {
     console.log("✅ [Midtrans] Charge Response Received")
     
     // Midtrans GoPay returns 'generate-qr-code' or 'generate-qr-code-v2'
-    const qrAction = response.actions?.find((action: any) => 
+    const qrAction = response.actions?.find((action: { name: string; url: string }) => 
       action.name === 'generate-qr-code' || action.name === 'generate-qr'
     )
     
     if (!qrAction) {
-      console.error("❌ [Midtrans] No QR action found. Actions available:", response.actions?.map((a:any) => a.name))
+      console.error("❌ [Midtrans] No QR action found. Actions available:", response.actions?.map((a: { name: string }) => a.name))
       return null
     }
 
     console.log("👉 [Midtrans] QR URL:", qrAction.url)
     return qrAction.url
-  } catch (error: any) {
-    console.error("❌ [Midtrans] Critical Error:", error.message || error)
-    if (error.ApiResponse) {
-      console.error("👉 API Details:", JSON.stringify(error.ApiResponse, null, 2))
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error)
+    console.error("❌ [Midtrans] Critical Error:", errMsg)
+    if (typeof error === 'object' && error !== null && 'ApiResponse' in error) {
+      console.error("👉 API HTTP Status:", (error as Record<string, unknown>).httpStatusCode || "Unknown")
     }
     return null
   }

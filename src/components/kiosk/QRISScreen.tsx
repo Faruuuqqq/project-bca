@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,11 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
   const [currentTime, setCurrentTime] = useState('')
   const [isChecking, setIsChecking] = useState(false)
 
+  const handleSuccess = useCallback(() => {
+    clearCart()
+    router.push(`/success?id=${orderId}`)
+  }, [clearCart, router, orderId])
+
   useEffect(() => {
     const timer = setTimeout(() => setIsLoaded(true), 800)
     let isRedirecting = false
@@ -45,10 +50,10 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
        try {
          const result = await checkPaymentStatus(orderId)
          if (result.status === 'paid' && !isRedirecting) {
-           isRedirecting = true
-           clearInterval(pollingTimer) // HENTIKAN POLLING SEGERA
-           handleSuccess()
-         }
+            isRedirecting = true
+            clearInterval(pollingTimer) // HENTIKAN POLLING SEGERA
+            handleSuccess()
+          }
        } catch (e) {
          // silent fail
        }
@@ -75,12 +80,7 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
       clearInterval(pollingTimer) // Cleanup saat komponen unmount
       supabase.removeChannel(channel)
     }
-  }, [orderId, supabase])
-
-  const handleSuccess = () => {
-    clearCart()
-    router.push(`/success?id=${orderId}`)
-  }
+  }, [orderId, supabase, handleSuccess])
 
   const checkStatusManual = async () => {
     setIsChecking(true)

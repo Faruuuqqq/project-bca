@@ -14,7 +14,7 @@ export async function checkPaymentStatus(orderId: string) {
   try {
     // 1. Tanya ke Midtrans
     const transaction = await midtransCore.transaction.status(orderId)
-    console.log(`✅ [Midtrans Response] Status: ${transaction.transaction_status}, Full Data:`, JSON.stringify(transaction, null, 2))
+    console.log(`✅ [Midtrans Response] Order: ${orderId}, Status: ${transaction.transaction_status}`)
 
     // 2. Jika lunas (settlement/capture), update DB
     const isPaid = ['settlement', 'capture', 'success'].includes(transaction.transaction_status)
@@ -34,8 +34,9 @@ export async function checkPaymentStatus(orderId: string) {
     }
 
     return { status: transaction.transaction_status }
-  } catch (error: any) {
-    console.error("❌ [Midtrans API Error]:", error.message)
+  } catch (error: unknown) {
+    const errMsg = (error as Error).message
+    console.error("❌ [Midtrans API Error]:", errMsg)
     
     // Fallback: Jika error tapi di DB sudah paid (mungkin karena webhook duluan)
     const { data } = await supabase
@@ -49,7 +50,7 @@ export async function checkPaymentStatus(orderId: string) {
       return { status: 'paid' }
     }
     
-    return { status: 'unpaid', error: error.message }
+    return { status: 'unpaid', error: errMsg }
   }
 }
 

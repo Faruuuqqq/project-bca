@@ -101,10 +101,26 @@ export async function getDashboardStats(
   const supabase = await createClient()
   const win = rangeWindow(range)
 
-  // Period orders + previous-period orders run in parallel
-  const [currentOrders, previousOrders] = await Promise.all([
+  // Prepare weekly window if needed
+  let weeklyWindow: RangeWindow | null = null
+  if (range === 'today') {
+    const weekStart = new Date()
+    weekStart.setDate(weekStart.getDate() - 6)
+    weekStart.setHours(0, 0, 0, 0)
+    weeklyWindow = {
+      start: weekStart,
+      end: win.end,
+      prevStart: new Date(),
+      prevEnd: new Date(),
+      labelMode: 'day',
+    }
+  }
+
+  // Period orders + previous-period orders + weekly orders (if viewing today) run in parallel
+  const [currentOrders, previousOrders, weeklyOrders] = await Promise.all([
     fetchPaidOrders(supabase, win.start, win.end),
     fetchPaidOrders(supabase, win.prevStart, win.prevEnd),
+    weeklyWindow ? fetchPaidOrders(supabase, weeklyWindow.start, weeklyWindow.end) : Promise.resolve([]),
   ])
 
   const currentItems = await fetchOrderItems(
@@ -174,12 +190,8 @@ export async function getDashboardStats(
       weeklyMap.set(day, (weeklyMap.get(day) ?? 0) + Number(o.total_price))
     })
   } else {
-    // Always show last 7 days context even when viewing today
-    const weekStart = new Date()
-    weekStart.setDate(weekStart.getDate() - 6)
-    weekStart.setHours(0, 0, 0, 0)
-    const weekly = await fetchPaidOrders(supabase, weekStart, win.end)
-    weekly.forEach((o) => {
+    // Use already-fetched weekly orders from the parallel Promise.all() above
+    weeklyOrders.forEach((o) => {
       const day = new Date(o.created_at).toLocaleDateString('id-ID', {
         weekday: 'short',
       })
@@ -564,7 +576,7 @@ export async function getMenuSalesHistory(limit: number = 100, offset: number = 
     }
   >()
 
-  data?.forEach((item: any) => {
+  data?.forEach((item: { menu_name: string; quantity: number; menu_price: number; menus: { id: string; cost_price: number | null } | null }) => {
     const key = item.menu_name
     const current = aggregated.get(key) || {
       name: item.menu_name,
@@ -614,7 +626,7 @@ export async function getTopSellingMenus(days: number = 30, limit: number = 10) 
     }
   >()
 
-  data?.forEach((item: any) => {
+  data?.forEach((item: { menu_name: string; quantity: number; menu_price: number; menus: { id: string; cost_price: number | null } | null }) => {
     const key = item.menu_name
     const current = aggregated.get(key) || {
       name: item.menu_name,

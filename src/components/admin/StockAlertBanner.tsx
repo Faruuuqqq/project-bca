@@ -3,7 +3,7 @@
 import { AlertTriangle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { dismissStockAlert } from '@/actions/admin'
 import { toast } from 'sonner'
 
@@ -20,12 +20,6 @@ export function StockAlertBanner({ alerts }: StockAlertBannerProps) {
   const [visible, setVisible] = useState(true)
   const [dismissing, setDismissing] = useState(false)
 
-  useEffect(() => {
-    if (alerts.length === 0) {
-      setVisible(false)
-    }
-  }, [alerts])
-
   if (!visible || alerts.length === 0) return null
 
   const handleDismiss = async () => {
@@ -35,7 +29,7 @@ export function StockAlertBanner({ alerts }: StockAlertBannerProps) {
       // For now, just hide the banner
       setVisible(false)
       toast.success('Alert dihapus')
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error('Gagal menghapus alert')
     } finally {
       setDismissing(false)

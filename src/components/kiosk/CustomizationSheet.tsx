@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Menu, MenuOption } from '@/types/database'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useCartStore } from '@/store/cart'
 import {
   Dialog,
@@ -18,8 +17,30 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, Minus, X } from 'lucide-react'
 import { toast } from 'sonner'
 
+interface MenuOptionValue {
+  id: string
+  label: string
+  extra_price: number
+}
+
+interface MenuOption {
+  id: string
+  name: string
+  is_required: boolean
+  selection_type: 'single' | 'multiple'
+  menu_option_values?: MenuOptionValue[]
+}
+
+interface MenuWithOptions {
+  id: string
+  name: string
+  price: number
+  description?: string
+  menu_options?: MenuOption[]
+}
+
 interface CustomizationSheetProps {
-  menu: any | null // Use any to match the joined structure from Supabase
+  menu: MenuWithOptions | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -28,31 +49,30 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
   const addItem = useCartStore((state) => state.addItem)
   const [quantity, setQuantity] = useState(1)
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>({})
-  const [totalPrice, setTotalPrice] = useState(0)
 
-  // Reset state when menu changes
+  // Reset state when menu changes using key-like pattern with ref
+  const prevMenuId = useRef<string | null>(null)
   useEffect(() => {
-    if (menu) {
+    if (menu && menu.id !== prevMenuId.current) {
+      prevMenuId.current = menu.id
       setQuantity(1)
-      setSelectedOptions({}) // NO DEFAULT SELECTION - Force user to pick
-      setTotalPrice(Number(menu.price))
+      setSelectedOptions({})
     }
   }, [menu])
 
-  // Calculate total price whenever options or quantity change
-  useEffect(() => {
-    if (!menu) return
+  // Derive totalPrice from state instead of using useEffect+setState
+  const totalPrice = useMemo(() => {
+    if (!menu) return 0
 
     let extraPrice = 0
     Object.values(selectedOptions).flat().forEach(valueId => {
-      // Find the value in the menu options to get its extra_price
-      menu.menu_options?.forEach((opt: any) => {
-        const val = opt.menu_option_values?.find((v: any) => v.id === valueId)
+      menu.menu_options?.forEach((opt: MenuOption) => {
+        const val = opt.menu_option_values?.find((v: MenuOptionValue) => v.id === valueId)
         if (val) extraPrice += Number(val.extra_price)
       })
     })
 
-    setTotalPrice((Number(menu.price) + extraPrice) * quantity)
+    return (Number(menu.price) + extraPrice) * quantity
   }, [selectedOptions, quantity, menu])
 
   if (!menu) return null
@@ -74,7 +94,7 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
 
   const isAddDisabled = () => {
     // Check if all required options are selected
-    return menu.menu_options?.some((opt: any) => {
+    return menu.menu_options?.some((opt: MenuOption) => {
       if (opt.is_required) {
         return !selectedOptions[opt.id] || selectedOptions[opt.id].length === 0
       }
@@ -83,12 +103,14 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
   }
 
   const handleAddToCart = () => {
-    const optionsForCart: { optionId: string; optionName: any; valueId: string; valueLabel: any; extraPrice: number }[] = []
+    const optionsForCart: { optionId: string; optionName: string; valueId: string; valueLabel: string; extraPrice: number }[] = []
     
     for (const [optionId, valueIds] of Object.entries(selectedOptions)) {
-      const option = menu.menu_options.find((o: any) => o.id === optionId)
+      const option = menu.menu_options?.find((o: MenuOption) => o.id === optionId)
+      if (!option) continue
       valueIds.forEach(vId => {
-        const value = option.menu_option_values.find((v: any) => v.id === vId)
+        const value = option.menu_option_values?.find((v: MenuOptionValue) => v.id === vId)
+        if (!value) return
         optionsForCart.push({
           optionId,
           optionName: option.name,
@@ -129,7 +151,7 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
         {/* SCROLL AREA - Bagian yang bisa digeser */}
         <div className="flex-1 overflow-y-auto px-6 py-4 bg-white touch-pan-y custom-scrollbar">
           <div className="space-y-8 pb-32">
-            {menu.menu_options?.map((opt: any) => (
+            {menu.menu_options?.map((opt: MenuOption) => (
               <div key={opt.id} className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-black text-[#3d2b1f] uppercase tracking-tight">
@@ -147,7 +169,7 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
                     onValueChange={(val) => handleToggleOption(opt.id, val, 'single')}
                     className="space-y-3"
                   >
-                    {opt.menu_option_values?.map((val: any) => (
+                    {opt.menu_option_values?.map((val: MenuOptionValue) => (
                       <div 
                         key={val.id} 
                         onClick={() => handleToggleOption(opt.id, val.id, 'single')}
@@ -177,7 +199,7 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
                   </RadioGroup>
                 ) : (
                   <div className="space-y-3">
-                    {opt.menu_option_values?.map((val: any) => (
+                    {opt.menu_option_values?.map((val: MenuOptionValue) => (
                       <div 
                         key={val.id} 
                         onClick={() => handleToggleOption(opt.id, val.id, 'multiple')}

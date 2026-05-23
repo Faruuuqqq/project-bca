@@ -116,7 +116,7 @@ export function isFeatureEnabled(feature: keyof typeof FEATURES): boolean {
 /**
  * Utility for feature-gated logging (development only)
  */
-export function logFeatureUsage(featureName: keyof typeof FEATURES, context?: Record<string, any>) {
+export function logFeatureUsage(featureName: keyof typeof FEATURES, context?: Record<string, unknown>) {
   if (FEATURES.AB_TESTING_MODE && process.env.NODE_ENV === 'development') {
     console.log(`[Feature: ${featureName}]`, {
       enabled: FEATURES[featureName],

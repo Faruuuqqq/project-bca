@@ -38,9 +38,28 @@ import { CriticalStockIndicator, CriticalStockWarning } from '@/components/admin
 import { checkAndTriggerStockAlerts } from '@/actions/admin'
 import { useRealtimeInventory } from '@/hooks/use-realtime-inventory'
 
+interface InventoryItem {
+  id: string
+  name: string
+  current_stock: number
+  critical_stock_threshold?: number
+  category_id?: string
+  categories?: { name: string }
+}
+
+interface InventoryMovement {
+  id: string
+  menu_id: string
+  movement_type: 'in' | 'out'
+  quantity: number
+  reason: string
+  created_at: string
+  menus?: { name: string }
+}
+
 interface InventoryManagerProps {
-  initialMenus: any[]
-  initialHistory: any[]
+  initialMenus: InventoryItem[]
+  initialHistory: InventoryMovement[]
 }
 
 export function InventoryManager({ initialMenus, initialHistory }: InventoryManagerProps) {
@@ -63,8 +82,8 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
       toast.success(`${menuName}: ${amount > 0 ? '+' : ''}${amount} porsi`, { id: toastId })
       invalidateInventoryCache()
       router.refresh()
-    } catch (error: any) {
-      toast.error(error.message, { id: toastId })
+    } catch (error: unknown) {
+      toast.error((error as Error).message, { id: toastId })
     } finally {
       setLoadingId(null)
     }
@@ -87,12 +106,12 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
       setIsAdjustDialogOpen(false)
       setAdjustTarget(null)
       router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || 'Gagal memperbarui stok', { id: toastId })
+    } catch (error: unknown) {
+      toast.error((error as Error).message || 'Gagal memperbarui stok', { id: toastId })
     }
   }
 
-  const openEditDialog = (menu: any) => {
+  const openEditDialog = (menu: InventoryItem) => {
     setAdjustTarget({ id: menu.id, name: menu.name, stock: menu.current_stock })
     setIsAdjustDialogOpen(true)
   }

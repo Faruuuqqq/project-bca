@@ -8,7 +8,7 @@ interface CacheEntry<T> {
   ttl: number
 }
 
-const queryCache = new Map<string, CacheEntry<any>>()
+const queryCache = new Map<string, CacheEntry<unknown>>()
 
 /**
  * Hook for caching menu/inventory data with configurable TTL (time-to-live)
@@ -33,7 +33,7 @@ export function useCachedQuery<T>(
     const cached = queryCache.get(key)
 
     if (cached && Date.now() - cached.timestamp < cached.ttl) {
-      return cached.data
+      return cached.data as T
     }
 
     return null
