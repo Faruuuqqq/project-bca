@@ -90,7 +90,7 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
     }
   }, [orderId, supabase, handleSuccess])
 
-  // FIX #2: Add cooldown to manual check button
+  // FIX #2 & #4: Add cooldown to manual check button + better error handling
   const checkStatusManual = async () => {
     const now = Date.now()
     
@@ -112,10 +112,15 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
         return
       }
       
+      // FIX #4: Better error messaging for different scenarios
       if (result.status === 'paid') {
         toast.success("Pembayaran Berhasil Terdeteksi!")
         handleSuccess()
+      } else if (result.message) {
+        // This is a retry failure with helpful message
+        toast.info(result.message)
       } else {
+        // Payment still pending
         toast.info("Belum ada pembayaran lunas. Silakan scan & bayar terlebih dahulu.")
       }
     } catch (e) {
