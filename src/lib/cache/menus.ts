@@ -7,12 +7,14 @@ import { createClient } from '@/lib/supabase/server'
  * Cached menus query per-request using React.cache()
  * Deduplicates multiple menus fetches within the same server request
  * Cache is invalidated between requests automatically
+ * OPTIMIZATION: Removed SELECT * - now specifies exact columns needed
+ * Impact: Smaller network payload, faster serialization
  */
 export const getCachedMenus = cache(async () => {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('menus')
-    .select('*, categories(name)')
+    .select('id, name, price, cost_price, category_id, image_url, is_sold_out, current_stock, description, menu_options(id, name, is_required, selection_type, menu_option_values(id, label, extra_price)), categories(name)')
     .order('name', { ascending: true })
 
   if (error) throw new Error(error.message)
@@ -35,12 +37,14 @@ export const getCachedMenusForInventory = cache(async () => {
 
 /**
  * Cached categories query per-request
+ * OPTIMIZATION: Removed SELECT * - specifies exact columns needed (id, name, sort_order, description)
+ * Saves bandwidth and improves serialization speed
  */
 export const getCachedCategories = cache(async () => {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('categories')
-    .select('*')
+    .select('id, name, sort_order, description')
     .order('sort_order', { ascending: true })
 
   if (error) throw new Error(error.message)

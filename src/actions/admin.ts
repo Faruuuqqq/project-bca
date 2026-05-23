@@ -377,7 +377,7 @@ export async function getStockAlertHistory(menuId: string, limit = 10) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('stock_alerts')
-    .select('*')
+    .select('id, menu_id, menu_name, alert_type, current_stock, triggered_at, resolved_at')
     .eq('menu_id', menuId)
     .order('triggered_at', { ascending: false })
     .limit(limit)
