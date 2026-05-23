@@ -619,10 +619,14 @@ export async function getTopSellingMenus(days: number = 30, limit: number = 10) 
   const dateFrom = new Date()
   dateFrom.setDate(dateFrom.getDate() - days)
 
+  // OPTIMIZATION: Added ORDER BY and LIMIT to prevent fetching 50K+ rows
+  // Fetch in descending order by created_at, limit to reasonable amount for aggregation
   const { data, error } = await supabase
     .from('order_items')
     .select('menu_name, quantity, menu_price, menus(id, cost_price)')
     .gte('created_at', dateFrom.toISOString())
+    .order('created_at', { ascending: false })
+    .limit(2000)
 
   if (error) throw new Error(error.message)
 
