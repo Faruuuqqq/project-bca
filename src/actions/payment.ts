@@ -81,7 +81,7 @@ export async function checkPaymentStatus(orderId: string) {
       }
     }
 
-    const transaction = retryResult.data
+    const transaction = retryResult.data as any
     const responseTime = Date.now() - startTime
     console.log(
       `✅ [Midtrans Response] Order: ${orderId}, Status: ${transaction.transaction_status} ` +

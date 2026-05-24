@@ -11,7 +11,7 @@ async function OrdersContent() {
   // OPTIMIZATION: Added LIMIT (200) to prevent memory spikes during peak, ordered by priority + time
   const { data: orders } = await supabase
     .from('orders')
-    .select('id, order_type, order_status, is_priority, queue_number, created_at, total_price, order_items(id, menu_name, quantity, special_instructions, order_item_options(*))')
+    .select('id, order_type, order_status, payment_status, is_priority, queue_number, created_at, total_price, order_items(id, menu_id, menu_name, quantity, special_instructions, order_item_options(*))')
     .eq('payment_status', 'paid')
     .neq('order_status', 'completed')
     .neq('order_status', 'void')

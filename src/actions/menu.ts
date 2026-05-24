@@ -167,15 +167,47 @@ export async function deleteMenu(id: string) {
 
 export async function toggleSoldOut(menuId: string, value: boolean) {
   const supabase = await createClient()
-  
-  const { error } = await supabase
-    .from('menus')
-    .update({ is_sold_out: value })
-    .eq('id', menuId)
+   
+   const { error } = await supabase
+     .from('menus')
+     .update({ is_sold_out: value })
+     .eq('id', menuId)
 
-  if (error) throw new Error(error.message)
+   if (error) throw new Error(error.message)
+   
+   revalidatePath('/admin/menus')
+   revalidatePath('/admin/orders')
+   return { success: true }
+}
+
+/**
+ * Toggle menu sold out status (quick action for admin)
+ * Gets current state, toggles it, and updates
+ */
+export async function toggleMenuSoldOut(menuId: string) {
+  const supabase = await createClient()
+  
+  // Get current state
+  const { data: menu, error: fetchError } = await supabase
+    .from('menus')
+    .select('is_sold_out')
+    .eq('id', menuId)
+    .single()
+  
+  if (fetchError) throw new Error(fetchError.message)
+  if (!menu) throw new Error('Menu tidak ditemukan')
+  
+  // Toggle the state
+  const newState = !menu.is_sold_out
+  
+  const { error: updateError } = await supabase
+    .from('menus')
+    .update({ is_sold_out: newState })
+    .eq('id', menuId)
+  
+  if (updateError) throw new Error(updateError.message)
   
   revalidatePath('/admin/menus')
   revalidatePath('/admin/orders')
-  return { success: true }
+  return { success: true, is_sold_out: newState }
 }
