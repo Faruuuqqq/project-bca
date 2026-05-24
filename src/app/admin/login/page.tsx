@@ -32,8 +32,8 @@ export default function LoginPage() {
       toast.success('Login berhasil')
       router.push('/admin')
       router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || 'Login gagal. Periksa kembali email dan password Anda.')
+    } catch (error: unknown) {
+      toast.error((error as Error).message || 'Login gagal. Periksa kembali email dan password Anda.')
     } finally {
       setIsLoading(false)
     }

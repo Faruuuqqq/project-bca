@@ -10,7 +10,9 @@ import Link from 'next/link'
 export function MenuHeader() {
   const orderType = useCartStore((state) => state.orderType)
   const [currentTime, setCurrentTime] = useState('')
-  const [isOnline, setIsOnline] = useState(true)
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  )
 
   useEffect(() => {
     // 1. Time Update
@@ -29,7 +31,6 @@ export function MenuHeader() {
     const updateOnlineStatus = () => setIsOnline(navigator.onLine)
     window.addEventListener('online', updateOnlineStatus)
     window.addEventListener('offline', updateOnlineStatus)
-    setIsOnline(navigator.onLine)
 
     return () => {
       clearInterval(timer)
@@ -45,7 +46,7 @@ export function MenuHeader() {
         {/* Sisi Kiri: Logo & Navigasi */}
         <div className="flex items-center gap-3 md:gap-8">
           <Link href="/">
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-all active:scale-90 border border-white/20">
+            <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-all active:scale-90 border border-white/20">
               <ChevronLeft size={20} className="stroke-[3]" />
             </Button>
           </Link>

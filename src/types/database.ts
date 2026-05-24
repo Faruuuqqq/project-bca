@@ -26,6 +26,7 @@ export type Menu = {
   name: string
   description: string
   price: number
+  cost_price: number
   image_url: string
   is_sold_out: boolean
   options?: MenuOption[]

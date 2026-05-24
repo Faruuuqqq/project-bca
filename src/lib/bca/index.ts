@@ -65,8 +65,8 @@ function generateAsymmetricSignature(timestamp: string): string {
     signer.end()
     
     return signer.sign(CONFIG.privateKey, 'base64')
-  } catch (error: any) {
-    console.error("❌ [BCA CRYPTO FAIL]:", error.message)
+  } catch (error: unknown) {
+    console.error("❌ [BCA CRYPTO FAIL]:", (error as Error).message)
     throw error
   }
 }
@@ -179,7 +179,7 @@ export async function generateBcaQRIS(orderId: string, amount: number) {
        return `0002010102122654000200011893600014300001450702150008850000145070303UMI51240008ID.GPNQR020100303UMI5204581453033605406${amount}.005802ID5914AYAM KALINTANG6007BANDUNG6105401156304FADF`
     }
   } catch (error) {
-    console.error("⚠️ [BCA FALLBACK] Menggunakan QR Simulasi karena:", (error as any).message)
+    console.error("⚠️ [BCA FALLBACK] Menggunakan QR Simulasi karena:", (error as Error).message)
     return `0002010102122654000200011893600014300001450702150008850000145070303UMI51240008ID.GPNQR020100303UMI5204581453033605406${amount}.005802ID5914AYAM KALINTANG6007BANDUNG6105401156304FADF`
   }
 }

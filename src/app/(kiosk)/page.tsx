@@ -89,7 +89,7 @@ export default function AttractScreen() {
             <div className="h-1 w-12 bg-brand-secondary rounded-full shadow-lg" />
           </div>
           <p className="text-white/90 text-lg md:text-xl font-bold italic drop-shadow-md">
-            "{SLIDES[currentSlide].desc}"
+            &quot;{SLIDES[currentSlide].desc}&quot;
           </p>
         </div>
 

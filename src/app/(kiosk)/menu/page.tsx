@@ -7,24 +7,24 @@ import { MenuHeader } from '@/components/kiosk/MenuHeader'
 async function MenuList() {
   const supabase = await createClient()
 
-  // Fetch categories
-  const { data: categories } = await supabase
-    .from('categories')
-    .select('*')
-    .order('sort_order', { ascending: true })
-
-  // Fetch menus with their options and values
-  const { data: menus } = await supabase
-    .from('menus')
-    .select(`
-      *,
-      categories(name),
-      menu_options (
+  // Parallel fetch: categories + menus with options
+  const [{ data: categories }, { data: menus }] = await Promise.all([
+    supabase
+      .from('categories')
+      .select('*')
+      .order('sort_order', { ascending: true }),
+    supabase
+      .from('menus')
+      .select(`
         *,
-        menu_option_values (*)
-      )
-    `)
-    .order('sort_order', { ascending: true })
+        categories(name),
+        menu_options (
+          *,
+          menu_option_values (*)
+        )
+      `)
+      .order('sort_order', { ascending: true }),
+  ])
 
   return (
     <MenuGrid 

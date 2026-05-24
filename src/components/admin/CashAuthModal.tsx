@@ -15,8 +15,15 @@ import { confirmCashPayment } from '@/actions/payment'
 import { toast } from 'sonner'
 import { Loader2, KeyRound } from 'lucide-react'
 
+interface CashOrder {
+  id: string
+  queue_number: string
+  customer_name?: string
+  total_price: number
+}
+
 interface CashAuthModalProps {
-  order: any | null
+  order: CashOrder | null
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
@@ -34,7 +41,7 @@ export function CashAuthModal({ order, open, onOpenChange, onSuccess }: CashAuth
 
     setIsLoading(true)
     try {
-      const result = await confirmCashPayment(order.id, pin)
+      const result = await confirmCashPayment(order!.id, pin)
       if (result.error) {
         toast.error(result.error)
       } else {
@@ -43,8 +50,8 @@ export function CashAuthModal({ order, open, onOpenChange, onSuccess }: CashAuth
         onOpenChange(false)
         setPin('')
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Terjadi kesalahan')
+    } catch (error: unknown) {
+      toast.error((error as Error).message || 'Terjadi kesalahan')
     } finally {
       setIsLoading(false)
     }
