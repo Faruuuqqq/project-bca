@@ -491,7 +491,7 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
                       </button>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                      <span truncate>{menu.categories?.[0]?.name || '(No Category)'}</span>
+                      <span className="truncate">{menu.categories?.[0]?.name || '(No Category)'}</span>
                       <span>•</span>
                       <span className="font-semibold text-brand-primary">
                         {formatRupiah(menu.price)}

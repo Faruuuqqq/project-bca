@@ -291,7 +291,7 @@ export async function adjustStock(menuId: string, amount: number, reason: string
     supabase.from('inventory_movements').insert({
       menu_id: menuId,
       movement_type: amount >= 0 ? 'in' : 'out',
-      quantity: Math.abs(amount),
+      amount: Math.abs(amount),
       reason: reason,
     }),
   ])
@@ -313,7 +313,7 @@ export async function getInventoryHistory() {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('inventory_movements')
-    .select('id, menu_id, movement_type, quantity, reason, created_at, menus!inner(name)')
+    .select('id, menu_id, movement_type, amount, reason, created_at, menus!inner(name)')
     .order('created_at', { ascending: false })
     .limit(50)
 
@@ -357,10 +357,11 @@ export async function getOrderById(orderId: string) {
 export async function getCriticalStockAlerts() {
   const supabase = await createClient()
   try {
+    // Supabase PostgREST cannot compare two columns with .lt()
+    // Fetch all menus with stock info and filter client-side
     const { data, error } = await supabase
       .from('menus')
       .select('id, name, current_stock, critical_stock_threshold')
-      .lt('current_stock', 'critical_stock_threshold')
       .order('current_stock', { ascending: true })
       .limit(100)
 
@@ -368,7 +369,11 @@ export async function getCriticalStockAlerts() {
       console.warn("Stock alert error (likely missing migration):", error.message)
       return []
     }
-    return data || []
+    
+    // Filter: current_stock < critical_stock_threshold (default 5)
+    return (data || []).filter(
+      (m) => m.current_stock < (m.critical_stock_threshold ?? 5)
+    )
   } catch (e) {
     return []
   }

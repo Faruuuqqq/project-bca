@@ -11,7 +11,7 @@ import { adminTokens } from '@/components/admin/_tokens'
 interface HistoryItem {
   id: string
   menu_id: string
-  quantity: number
+  amount: number
   movement_type: 'in' | 'out'
   reason: string
   created_at: string
@@ -142,7 +142,7 @@ export function InventoryHistoryPage({ initialHistory, menus }: InventoryHistory
                         item.movement_type === 'in' ? 'text-emerald-600' : 'text-red-600'
                       )}
                     >
-                      {item.movement_type === 'in' ? '+' : '-'}{item.quantity} porsi
+                      {item.movement_type === 'in' ? '+' : '-'}{item.amount} porsi
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">{item.reason}</p>
@@ -217,7 +217,7 @@ export function InventoryHistoryPage({ initialHistory, menus }: InventoryHistory
               Total Masuk
             </p>
             <p className="text-2xl font-bold text-emerald-700 tabular-nums">
-              +{filteredHistory.reduce((sum, i) => (i.movement_type === 'in' ? sum + i.quantity : sum), 0)}
+              +{filteredHistory.reduce((sum, i) => (i.movement_type === 'in' ? sum + i.amount : sum), 0)}
             </p>
           </div>
 
@@ -227,7 +227,7 @@ export function InventoryHistoryPage({ initialHistory, menus }: InventoryHistory
               Total Keluar
             </p>
             <p className="text-2xl font-bold text-red-700 tabular-nums">
-              -{filteredHistory.reduce((sum, i) => (i.movement_type === 'out' ? sum + i.quantity : sum), 0)}
+              -{filteredHistory.reduce((sum, i) => (i.movement_type === 'out' ? sum + i.amount : sum), 0)}
             </p>
           </div>
 
@@ -238,7 +238,7 @@ export function InventoryHistoryPage({ initialHistory, menus }: InventoryHistory
             </p>
             <p className="text-2xl font-bold text-blue-700 tabular-nums">
               {filteredHistory.reduce(
-                (sum, i) => sum + (i.movement_type === 'in' ? i.quantity : -i.quantity),
+                (sum, i) => sum + (i.movement_type === 'in' ? i.amount : -i.amount),
                 0
               )}
             </p>

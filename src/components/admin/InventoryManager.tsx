@@ -51,10 +51,10 @@ interface InventoryMovement {
   id: string
   menu_id: string
   movement_type: 'in' | 'out'
-  quantity: number
+  amount: number
   reason: string
   created_at: string
-  menus?: { name: string }
+  menus?: Array<{ name: string }>
 }
 
 interface InventoryManagerProps {
@@ -306,12 +306,12 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-bold text-sm text-foreground truncate">{m.menus?.name}</p>
+                    <p className="font-bold text-sm text-foreground truncate">{m.menus?.[0]?.name}</p>
                     <span className={cn(
                       'text-xs font-bold tabular-nums shrink-0',
                       m.movement_type === 'in' ? 'text-emerald-600' : 'text-red-600'
                     )}>
-                      {m.movement_type === 'in' ? '+' : '-'}{m.quantity}
+                      {m.movement_type === 'in' ? '+' : '-'}{m.amount}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">{m.reason}</p>
