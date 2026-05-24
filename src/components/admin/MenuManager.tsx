@@ -172,7 +172,7 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
   }
 
   const requestDeleteCategory = (cat: Category) => {
-    const hasMenus = initialMenus.some((m) => m.category_id === cat.id)
+    const hasMenus = menus.some((m) => m.category_id === cat.id)
     if (hasMenus) {
       toast.error(
         `Gagal: Kategori "${cat.name}" masih memiliki menu. Hapus atau pindahkan menu terlebih dahulu.`
@@ -234,9 +234,9 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
         <div>
           <div className="flex items-center gap-2">
             <h1 className={adminTokens.pageTitle}>Katalog Produk</h1>
-            <Badge className="bg-brand-primary text-white text-xs px-2 py-0.5 font-bold rounded-md">
-              {initialMenus.length} ITEM
-            </Badge>
+             <Badge className="bg-brand-primary text-white text-xs px-2 py-0.5 font-bold rounded-md">
+               {menus.length} ITEM
+             </Badge>
           </div>
           <div className="flex items-center gap-2 mt-1">
             <span className="h-1.5 w-1.5 rounded-full bg-brand-secondary" aria-hidden="true" />
@@ -307,20 +307,20 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
           <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Kategori</h2>
             <div className="flex gap-2 flex-wrap justify-start md:justify-end">
-              <button
-                onClick={() => setFilterCat('all')}
-                className={cn(
-                  'px-3 py-1.5 min-h-[36px] rounded-lg text-xs font-semibold transition-colors',
-                  adminTokens.focus,
-                  filterCat === 'all'
-                    ? 'bg-brand-primary text-white shadow-sm'
-                    : 'bg-card border border-border text-muted-foreground hover:bg-muted active:bg-muted/80'
-                )}
-              >
-                Semua ({initialMenus.length})
-              </button>
-              {initialCategories.map((cat) => {
-                const count = initialMenus.filter((m) => m.category_id === cat.id).length
+               <button
+                 onClick={() => setFilterCat('all')}
+                 className={cn(
+                   'px-3 py-1.5 min-h-[36px] rounded-lg text-xs font-semibold transition-colors',
+                   adminTokens.focus,
+                   filterCat === 'all'
+                     ? 'bg-brand-primary text-white shadow-sm'
+                     : 'bg-card border border-border text-muted-foreground hover:bg-muted active:bg-muted/80'
+                 )}
+               >
+                 Semua ({menus.length})
+               </button>
+               {initialCategories.map((cat) => {
+                 const count = menus.filter((m) => m.category_id === cat.id).length
                 return (
                   <button
                     key={cat.id}
