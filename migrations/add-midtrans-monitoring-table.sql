@@ -8,7 +8,7 @@
 
 CREATE TABLE IF NOT EXISTS midtrans_transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  order_id VARCHAR NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   transaction_type VARCHAR NOT NULL, -- 'charge', 'status', 'webhook'
   status VARCHAR NOT NULL, -- 'success', 'failed', 'timeout'
   amount DECIMAL(12, 0),
