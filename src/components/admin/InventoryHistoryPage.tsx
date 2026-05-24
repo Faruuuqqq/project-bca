@@ -15,9 +15,9 @@ interface HistoryItem {
   movement_type: 'in' | 'out'
   reason: string
   created_at: string
-  menus?: {
+  menus?: Array<{
     name: string
-  }
+  }>
 }
 
 interface MenuOption {
@@ -48,7 +48,7 @@ export function InventoryHistoryPage({ initialHistory, menus }: InventoryHistory
       // Search filter
       const searchLower = filters.searchTerm.toLowerCase()
       const matchesSearch =
-        (item.menus?.name || '').toLowerCase().includes(searchLower) ||
+        (item.menus?.[0]?.name || '').toLowerCase().includes(searchLower) ||
         item.reason.toLowerCase().includes(searchLower)
 
       // Menu filter
@@ -135,7 +135,7 @@ export function InventoryHistoryPage({ initialHistory, menus }: InventoryHistory
                 {/* Item Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2 flex-wrap">
-                    <p className="font-bold text-sm text-foreground">{item.menus?.name}</p>
+                    <p className="font-bold text-sm text-foreground">{item.menus?.[0]?.name}</p>
                     <span
                       className={cn(
                         'text-sm font-bold tabular-nums',

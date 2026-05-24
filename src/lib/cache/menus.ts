@@ -44,7 +44,7 @@ export const getCachedCategories = cache(async () => {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('categories')
-    .select('id, name, sort_order, description')
+    .select('id, name, sort_order')
     .order('sort_order', { ascending: true })
 
   if (error) throw new Error(error.message)

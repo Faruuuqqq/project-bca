@@ -313,7 +313,7 @@ export async function getInventoryHistory() {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('inventory_movements')
-    .select('*, menus(name)')
+    .select('id, menu_id, movement_type, quantity, reason, created_at, menus!inner(name)')
     .order('created_at', { ascending: false })
     .limit(50)
 
