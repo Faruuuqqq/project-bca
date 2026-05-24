@@ -39,6 +39,7 @@ import {
   updateCategory,
   deleteCategory,
   uploadMenuImage,
+  toggleMenuSoldOut,
 } from '@/actions/menu'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -86,6 +87,7 @@ type DeleteTarget =
 
 export function MenuManager({ initialCategories, initialMenus }: MenuManagerProps) {
   const router = useRouter()
+  const [menus, setMenus] = useState<MenuItem[]>(initialMenus)
   const [isMenuDialogOpen, setIsMenuDialogOpen] = useState(false)
   const [isCatDialogOpen, setIsCatDialogOpen] = useState(false)
   const [editingMenu, setEditingMenu] = useState<MenuItem | null>(null)
@@ -95,12 +97,13 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
   const [filterCat, setFilterCat] = useState<string>('all')
   const [imageUrl, setImageUrl] = useState<string>('')
   const [isUploading, setIsUploading] = useState(false)
+  const [togglingMenuId, setTogglingMenuId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Filtered menus by category
   const filteredMenus = filterCat === 'all'
-    ? initialMenus
-    : initialMenus.filter((m) => m.category_id === filterCat)
+    ? menus
+    : menus.filter((m) => m.category_id === filterCat)
 
   // Image upload handler
   const handleImageUpload = async (file: File) => {
@@ -194,6 +197,33 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
       toast.error((error as Error).message)
     } finally {
       setDeleteTarget(null)
+    }
+  }
+
+  const handleToggleSoldOut = async (menuId: string) => {
+    try {
+      setTogglingMenuId(menuId)
+      
+      // Optimistic UI - update local state immediately
+      setMenus((prev) =>
+        prev.map((m) =>
+          m.id === menuId ? { ...m, is_sold_out: !m.is_sold_out } : m
+        )
+      )
+
+      // Call server action
+      const result = await toggleMenuSoldOut(menuId)
+      
+      if (result.success) {
+        toast.success(result.is_sold_out ? 'Menu ditandai habis' : 'Menu tersedia kembali')
+        router.refresh()
+      }
+    } catch (error: unknown) {
+      // Revert optimistic UI on error
+      setMenus(initialMenus)
+      toast.error((error as Error).message)
+    } finally {
+      setTogglingMenuId(null)
     }
   }
 
@@ -310,100 +340,209 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
             </div>
           </div>
 
-          {/* Menu Cards */}
-          <div className="space-y-2 touch-scroll">
-            {filteredMenus.map((menu) => (
-            <div
-              key={menu.id}
-              className="flex items-center gap-3 bg-card rounded-xl border border-border p-3 shadow-sm hover:bg-muted/30 transition-colors"
-            >
-              {/* Thumbnail */}
-              <div className="h-12 w-12 rounded-lg bg-muted overflow-hidden border border-border shrink-0">
-                {menu.image_url ? (
-                  <img
-                    src={menu.image_url}
-                    alt={menu.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center text-muted-foreground">
-                    <ImageIcon size={16} aria-hidden="true" />
-                  </div>
-                )}
-              </div>
+          {/* Menu List Header - Grid Layout */}
+          <div className="hidden md:grid grid-cols-[60px_1fr_120px_100px_80px_60px_40px_40px] gap-3 px-4 py-3 bg-muted/40 rounded-lg border border-border text-xs font-semibold text-muted-foreground">
+            <div></div>
+            <div>Nama Menu</div>
+            <div>Kategori</div>
+            <div className="text-right">Harga</div>
+            <div className="text-center">Stok</div>
+            <div className="text-center">Status</div>
+            <div></div>
+            <div></div>
+          </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-bold text-sm text-foreground truncate">{menu.name}</p>
-                  <Badge
-                    className={cn(
-                      'text-white text-[10px] font-semibold px-1.5 py-0 shrink-0',
-                      menu.is_sold_out ? 'bg-red-500' : 'bg-emerald-500'
-                    )}
-                  >
-                    {menu.is_sold_out ? 'Habis' : 'Ready'}
-                  </Badge>
+          {/* Menu Cards - Grid Layout */}
+          <div className="space-y-2">
+            {filteredMenus.map((menu) => (
+              <div
+                key={menu.id}
+                className="hidden md:grid grid-cols-[60px_1fr_120px_100px_80px_60px_40px_40px] gap-3 items-center bg-card rounded-xl border border-border p-3 shadow-sm hover:bg-muted/30 transition-colors"
+              >
+                {/* Thumbnail (60px) */}
+                <div className="h-12 w-12 rounded-lg bg-muted overflow-hidden border border-border shrink-0">
+                  {menu.image_url ? (
+                    <img
+                      src={menu.image_url}
+                      alt={menu.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-muted-foreground">
+                      <ImageIcon size={16} aria-hidden="true" />
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs text-muted-foreground">{menu.categories?.[0]?.name}</span>
-                  <span className="text-xs text-muted-foreground">•</span>
+
+                {/* Name (1fr) */}
+                <div className="min-w-0">
+                  <p className="font-bold text-sm text-foreground truncate">{menu.name}</p>
+                </div>
+
+                {/* Category (120px) */}
+                <div className="min-w-0">
+                  <span className="text-xs text-muted-foreground truncate block">
+                    {menu.categories?.[0]?.name || '(No Category)'}
+                  </span>
+                </div>
+
+                {/* Price (100px) */}
+                <div className="text-right">
                   <span className="text-xs font-semibold text-brand-primary tabular-nums">
                     {formatRupiah(menu.price)}
                   </span>
-                  {Number(menu.cost_price) > 0 && (
-                    <>
-                      <span className="text-xs text-muted-foreground">•</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        Margin {(((menu.price - Number(menu.cost_price)) / menu.price) * 100).toFixed(0)}%
-                      </span>
-                    </>
-                  )}
+                </div>
+
+                {/* Stock (80px) */}
+                <div className="text-center">
+                  <span className="text-xs text-muted-foreground">
+                    {menu.current_stock} pcs
+                  </span>
+                </div>
+
+                {/* Status Badge - Clickable (60px) */}
+                <div className="text-center">
+                  <button
+                    onClick={() => handleToggleSoldOut(menu.id)}
+                    disabled={togglingMenuId === menu.id}
+                    className={cn(
+                      'text-white text-[10px] font-semibold px-2 py-1 rounded-md inline-block',
+                      'transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed',
+                      menu.is_sold_out
+                        ? 'bg-red-500 hover:bg-red-600'
+                        : 'bg-emerald-500 hover:bg-emerald-600'
+                    )}
+                  >
+                    {menu.is_sold_out ? 'Habis' : 'Ready'}
+                  </button>
+                </div>
+
+                {/* Edit Button (40px) */}
+                <div className="flex justify-center">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Edit ${menu.name}`}
+                    className="h-10 w-10 min-h-[44px] min-w-[44px] rounded-lg hover:bg-blue-50 hover:text-brand-primary active:bg-blue-100 transition-colors"
+                    onClick={() => {
+                      setEditingMenu(menu)
+                      setIsMenuDialogOpen(true)
+                    }}
+                  >
+                    <Pencil size={16} aria-hidden="true" />
+                  </Button>
+                </div>
+
+                {/* Delete Button (40px) */}
+                <div className="flex justify-center">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Hapus ${menu.name}`}
+                    className="h-10 w-10 min-h-[44px] min-w-[44px] rounded-lg hover:bg-red-50 hover:text-red-500 active:bg-red-100 transition-colors"
+                    onClick={() =>
+                      setDeleteTarget({ type: 'menu', id: menu.id, name: menu.name })
+                    }
+                  >
+                    <Trash2 size={16} aria-hidden="true" />
+                  </Button>
                 </div>
               </div>
+            ))}
 
-              {/* Actions */}
-              <div className="flex gap-1 shrink-0">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Edit ${menu.name}`}
-                  className="h-10 w-10 min-h-[44px] min-w-[44px] rounded-lg hover:bg-blue-50 hover:text-brand-primary active:bg-blue-100 transition-colors"
-                  onClick={() => {
-                    setEditingMenu(menu)
-                    setIsMenuDialogOpen(true)
-                  }}
+            {/* Mobile Fallback - Flex Layout */}
+            <div className="md:hidden space-y-2">
+              {filteredMenus.map((menu) => (
+                <div
+                  key={menu.id}
+                  className="flex items-center gap-3 bg-card rounded-xl border border-border p-3 shadow-sm hover:bg-muted/30 transition-colors"
                 >
-                  <Pencil size={16} aria-hidden="true" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Hapus ${menu.name}`}
-                  className="h-10 w-10 min-h-[44px] min-w-[44px] rounded-lg hover:bg-red-50 hover:text-red-500 active:bg-red-100 transition-colors"
-                  onClick={() =>
-                    setDeleteTarget({ type: 'menu', id: menu.id, name: menu.name })
-                  }
-                >
-                  <Trash2 size={16} aria-hidden="true" />
-                </Button>
+                  {/* Thumbnail */}
+                  <div className="h-12 w-12 rounded-lg bg-muted overflow-hidden border border-border shrink-0">
+                    {menu.image_url ? (
+                      <img
+                        src={menu.image_url}
+                        alt={menu.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center text-muted-foreground">
+                        <ImageIcon size={16} aria-hidden="true" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-sm text-foreground truncate">{menu.name}</p>
+                      <button
+                        onClick={() => handleToggleSoldOut(menu.id)}
+                        disabled={togglingMenuId === menu.id}
+                        className={cn(
+                          'text-white text-[10px] font-semibold px-2 py-1 rounded-md shrink-0',
+                          'transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed',
+                          menu.is_sold_out
+                            ? 'bg-red-500 hover:bg-red-600'
+                            : 'bg-emerald-500 hover:bg-emerald-600'
+                        )}
+                      >
+                        {menu.is_sold_out ? 'Habis' : 'Ready'}
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                      <span truncate>{menu.categories?.[0]?.name || '(No Category)'}</span>
+                      <span>•</span>
+                      <span className="font-semibold text-brand-primary">
+                        {formatRupiah(menu.price)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Edit ${menu.name}`}
+                      className="h-10 w-10 min-h-[44px] min-w-[44px] rounded-lg hover:bg-blue-50 hover:text-brand-primary active:bg-blue-100 transition-colors"
+                      onClick={() => {
+                        setEditingMenu(menu)
+                        setIsMenuDialogOpen(true)
+                      }}
+                    >
+                      <Pencil size={16} aria-hidden="true" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Hapus ${menu.name}`}
+                      className="h-10 w-10 min-h-[44px] min-w-[44px] rounded-lg hover:bg-red-50 hover:text-red-500 active:bg-red-100 transition-colors"
+                      onClick={() =>
+                        setDeleteTarget({ type: 'menu', id: menu.id, name: menu.name })
+                      }
+                    >
+                      <Trash2 size={16} aria-hidden="true" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {filteredMenus.length === 0 && (
+              <div className="text-center text-sm text-muted-foreground py-10 bg-card rounded-2xl border border-dashed border-border">
+                {filterCat === 'all'
+                  ? 'Belum ada menu. Klik "+ Menu Baru" untuk menambahkan.'
+                  : 'Tidak ada menu di kategori ini.'}
               </div>
-            </div>
-          ))}
-          {filteredMenus.length === 0 && (
-            <div className="text-center text-sm text-muted-foreground py-10 bg-card rounded-2xl border border-dashed border-border">
-              {filterCat === 'all'
-                ? 'Belum ada menu. Klik "+ Menu Baru" untuk menambahkan.'
-                : 'Tidak ada menu di kategori ini.'}
-            </div>
-          )}
+            )}
           </div>
         </div>
       )}
 
       {/* CATEGORY LIST — Compact */}
       {activeTab === 'category' && (
-        <div className="space-y-2 touch-scroll">
+        <div className="space-y-2">
           <div className="flex items-center gap-3 bg-card p-3 rounded-xl shadow-sm border border-border">
             <div className="h-10 w-10 bg-amber-100 rounded-xl flex items-center justify-center text-brand-secondary shrink-0">
               <Settings2 size={18} aria-hidden="true" />

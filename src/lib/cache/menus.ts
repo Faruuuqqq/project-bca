@@ -14,7 +14,7 @@ export const getCachedMenus = cache(async () => {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('menus')
-    .select('id, name, price, cost_price, category_id, image_url, is_sold_out, current_stock, description, menu_options(id, name, is_required, selection_type, menu_option_values(id, label, extra_price)), categories(name)')
+    .select('id, name, price, cost_price, category_id, image_url, is_sold_out, current_stock, description, menu_options(id, name, is_required, selection_type, menu_option_values(id, label, extra_price)), categories!inner(name)')
     .order('name', { ascending: true })
 
   if (error) throw new Error(error.message)
@@ -28,7 +28,7 @@ export const getCachedMenusForInventory = cache(async () => {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('menus')
-    .select('id, name, current_stock, price, critical_stock_threshold, categories(name)')
+    .select('id, name, current_stock, price, critical_stock_threshold, categories!inner(name)')
     .order('name', { ascending: true })
 
   if (error) throw new Error(error.message)
