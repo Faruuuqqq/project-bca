@@ -1,5 +1,3 @@
-'use server'
-
 /**
  * Rate Limiting for Midtrans API calls
  * FIX #2: Prevents users from spamming payment status checks
