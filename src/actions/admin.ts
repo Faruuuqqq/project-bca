@@ -595,7 +595,7 @@ export async function getMenuSalesHistory(limit: number = 100, offset: number = 
     }
   >()
 
-  data?.forEach((item: { menu_name: string; quantity: number; menu_price: number; menus: { id: string; cost_price: number | null } | null }) => {
+  data?.forEach((item: { menu_name: string; quantity: number; menu_price: number; menus: Array<{ id: string; cost_price: number | null }> }) => {
     const key = item.menu_name
     const current = aggregated.get(key) || {
       name: item.menu_name,
@@ -606,8 +606,8 @@ export async function getMenuSalesHistory(limit: number = 100, offset: number = 
 
     current.units += item.quantity || 0
     current.revenue += (item.menu_price || 0) * (item.quantity || 0)
-    if (item.menus?.cost_price) {
-      current.cost += item.menus.cost_price * (item.quantity || 0)
+    if (item.menus?.[0]?.cost_price) {
+      current.cost += item.menus[0].cost_price * (item.quantity || 0)
     }
 
     aggregated.set(key, current)
@@ -649,7 +649,7 @@ export async function getTopSellingMenus(days: number = 30, limit: number = 10) 
     }
   >()
 
-  data?.forEach((item: { menu_name: string; quantity: number; menu_price: number; menus: { id: string; cost_price: number | null } | null }) => {
+  data?.forEach((item: { menu_name: string; quantity: number; menu_price: number; menus: Array<{ id: string; cost_price: number | null }> }) => {
     const key = item.menu_name
     const current = aggregated.get(key) || {
       name: item.menu_name,
@@ -659,7 +659,7 @@ export async function getTopSellingMenus(days: number = 30, limit: number = 10) 
     }
 
     const itemRevenue = (item.menu_price || 0) * (item.quantity || 0)
-    const itemCost = (item.menus?.cost_price || 0) * (item.quantity || 0)
+    const itemCost = (item.menus?.[0]?.cost_price || 0) * (item.quantity || 0)
 
     current.units += item.quantity || 0
     current.revenue += itemRevenue

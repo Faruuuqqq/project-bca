@@ -43,7 +43,8 @@ interface InventoryItem {
   current_stock: number
   critical_stock_threshold?: number
   category_id?: string
-  categories?: { name: string }
+  categories?: Array<{ name: string }>
+  price?: number
 }
 
 interface InventoryMovement {
@@ -196,7 +197,7 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
                     variant="secondary"
                     className="bg-muted text-muted-foreground border-none font-semibold text-xs px-2 py-0.5"
                   >
-                    {menu.categories?.name}
+                    {menu.categories?.[0]?.name}
                   </Badge>
                 </TableCell>
                 <TableCell className="py-4">

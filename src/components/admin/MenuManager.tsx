@@ -56,7 +56,7 @@ interface MenuItem {
   is_sold_out: boolean
   current_stock: number
   description?: string
-  categories?: { name: string }
+  categories?: Array<{ name: string }>
   menu_options?: MenuOptionItem[]
 }
 
@@ -346,7 +346,7 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs text-muted-foreground">{menu.categories?.name}</span>
+                  <span className="text-xs text-muted-foreground">{menu.categories?.[0]?.name}</span>
                   <span className="text-xs text-muted-foreground">•</span>
                   <span className="text-xs font-semibold text-brand-primary tabular-nums">
                     {formatRupiah(menu.price)}
@@ -489,7 +489,7 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
                 {(imageUrl || editingMenu?.image_url) && !isUploading ? (
                   <div className="relative w-full h-40 rounded-xl overflow-hidden border border-border bg-muted">
                     <img
-                      src={imageUrl || editingMenu?.image_url}
+                      src={imageUrl || editingMenu?.image_url || ''}
                       alt="Preview"
                       className="w-full h-full object-cover"
                     />
