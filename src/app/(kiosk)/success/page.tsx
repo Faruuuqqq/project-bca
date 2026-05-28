@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, Suspense, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Home, Printer, Loader2, PartyPopper } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
+import { Receipt } from '@/components/receipt/Receipt'
 
 interface OrderItemOption {
   id: string
@@ -23,6 +24,9 @@ interface OrderItem {
 interface Order {
   queue_number: string
   total_price: number
+  order_type: string
+  payment_method: string
+  created_at: string
   order_items?: OrderItem[]
 }
 
@@ -34,6 +38,7 @@ function SuccessContent() {
   
   const [order, setOrder] = useState<Order | null>(null)
   const [countdown, setCountdown] = useState(7)
+  const hasPrinted = useRef(false)
 
   useEffect(() => {
     if (!orderId) {
@@ -66,6 +71,18 @@ function SuccessContent() {
 
     return () => clearInterval(timer)
   }, [orderId, router, supabase])
+
+  // Auto-print when order data is loaded
+  useEffect(() => {
+    if (order && !hasPrinted.current) {
+      hasPrinted.current = true
+      // Short delay to ensure Receipt component is rendered
+      const printTimer = setTimeout(() => {
+        window.print()
+      }, 600)
+      return () => clearTimeout(printTimer)
+    }
+  }, [order])
 
   // Handle redirect when countdown reaches 0
   useEffect(() => {
@@ -165,6 +182,18 @@ function SuccessContent() {
           </div>
         </div>
       </div>
+
+      {/* Hidden Receipt — only visible during print */}
+      {order && (
+        <Receipt
+          queueNumber={order.queue_number}
+          totalPrice={order.total_price}
+          orderType={order.order_type}
+          paymentMethod={order.payment_method}
+          items={order.order_items || []}
+          createdAt={order.created_at}
+        />
+      )}
     </div>
   )
 }

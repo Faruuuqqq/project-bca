@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { getOrdersHistory } from '@/actions/admin'
+import { getOrdersHistory } from '@/actions/admin/orders'
 import OrdersHistoryPage from '@/components/admin/OrdersHistoryPage'
 import OrdersHistoryLoading from './loading'
 

@@ -26,8 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { History, ArrowUpRight, ArrowDownLeft, Search, Settings2, Plus, Minus, ChevronRight } from 'lucide-react'
-import { adjustStock } from '@/actions/admin'
+import { History, ArrowUpRight, ArrowDownLeft, Search, Settings2, Plus, Minus, ChevronRight, RotateCcw } from 'lucide-react'
+import { adjustStock, updateDailyStock, resetDailyStock } from '@/actions/admin/inventory'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
@@ -36,11 +36,22 @@ import { adminTokens } from '@/components/admin/_tokens'
 import { invalidateInventoryCache } from '@/lib/cache'
 import { CriticalStockIndicator, CriticalStockWarning } from '@/components/admin/CriticalStockIndicator'
 import { useRealtimeInventory } from '@/hooks/use-realtime-inventory'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface InventoryItem {
   id: string
   name: string
   current_stock: number
+  daily_stock?: number
   critical_stock_threshold?: number
   category_id?: string
   categories?: Array<{ name: string }>
@@ -68,6 +79,8 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
   const [adjustTarget, setAdjustTarget] = useState<{ id: string; name: string; stock: number } | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
 
   // Real-time inventory sync — shows toasts when other admins change stock
   useRealtimeInventory({ showToasts: true, autoRefresh: true })
@@ -96,11 +109,24 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
     const menuId = adjustTarget?.id || (formData.get('menu_id') as string)
     const amount = parseInt(formData.get('amount') as string, 10)
     const reason = formData.get('reason') as string
+    const dailyStockValue = formData.get('daily_stock') as string
+    const newDailyStock = dailyStockValue ? parseInt(dailyStockValue, 10) : null
 
     const toastId = toast.loading('Menyimpan perubahan stok...')
     try {
-      // adjustStock now handles stock alert checks internally
-      await adjustStock(menuId, amount, reason)
+      // Update daily stock if provided and changed
+      if (newDailyStock !== null && adjustTarget) {
+        const currentDailyStock = initialMenus.find(m => m.id === menuId)?.daily_stock ?? 0
+        if (newDailyStock !== currentDailyStock) {
+          await updateDailyStock(menuId, newDailyStock)
+        }
+      }
+
+      // Update current stock if amount is non-zero
+      if (amount !== 0) {
+        await adjustStock(menuId, amount, reason)
+      }
+
       toast.success('Stok berhasil diperbarui', { id: toastId })
       invalidateInventoryCache()
       setIsAdjustDialogOpen(false)
@@ -108,6 +134,27 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
       router.refresh()
     } catch (error: unknown) {
       toast.error((error as Error).message || 'Gagal memperbarui stok', { id: toastId })
+    }
+  }
+
+  // Reset all stock to daily defaults
+  const handleResetDailyStock = async () => {
+    setIsResetting(true)
+    const toastId = toast.loading('Mereset stok harian...')
+    try {
+      const result = await resetDailyStock()
+      if (result.resetCount === 0) {
+        toast.info('Tidak ada menu dengan stok harian yang dikonfigurasi.', { id: toastId })
+      } else {
+        toast.success(`Berhasil reset stok ${result.resetCount} menu ke nilai harian.`, { id: toastId })
+      }
+      invalidateInventoryCache()
+      router.refresh()
+    } catch (error: unknown) {
+      toast.error((error as Error).message || 'Gagal mereset stok', { id: toastId })
+    } finally {
+      setIsResetting(false)
+      setIsResetDialogOpen(false)
     }
   }
 
@@ -152,6 +199,17 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
             />
           </div>
           <Button
+            onClick={() => setIsResetDialogOpen(true)}
+            disabled={isResetting || !initialMenus.some(m => (m.daily_stock ?? 0) > 0)}
+            className={cn(
+              'bg-brand-secondary hover:bg-brand-secondary/90 active:bg-brand-secondary/80 text-brand-primary rounded-xl h-11 min-h-[44px] px-5 font-semibold text-sm shadow-sm transition-colors',
+              adminTokens.focus
+            )}
+          >
+            <RotateCcw size={16} className="mr-1.5" aria-hidden="true" />
+            Reset Harian
+          </Button>
+          <Button
             onClick={() => {
               setAdjustTarget(null)
               setIsAdjustDialogOpen(true)
@@ -177,6 +235,7 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
               </TableHead>
               <TableHead className={cn(adminTokens.tableHeader, 'py-4')}>Kategori</TableHead>
               <TableHead className={cn(adminTokens.tableHeader, 'py-4')}>Stok</TableHead>
+              <TableHead className={cn(adminTokens.tableHeader, 'py-4')}>Stok Harian</TableHead>
               <TableHead className={cn(adminTokens.tableHeader, 'py-4')}>Status</TableHead>
               <TableHead className={cn(adminTokens.tableHeader, 'text-right pr-6 py-4')}>
                 Aksi
@@ -210,6 +269,18 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
                     </span>
                     <span className="text-xs text-muted-foreground font-medium">porsi</span>
                   </div>
+                </TableCell>
+                <TableCell className="py-4">
+                  {(menu.daily_stock ?? 0) > 0 ? (
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-sm font-semibold tabular-nums text-muted-foreground">
+                        {menu.daily_stock}
+                      </span>
+                      <span className="text-xs text-muted-foreground font-medium">porsi</span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground/50">—</span>
+                  )}
                 </TableCell>
                 <TableCell className="py-4">
                   <CriticalStockIndicator
@@ -257,7 +328,7 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
             ))}
             {filteredMenus.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-10">
+                <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-10">
                   Tidak ada menu ditemukan.
                 </TableCell>
               </TableRow>
@@ -409,6 +480,28 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
                   className="rounded-xl border border-border h-11 min-h-[44px] text-base"
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Stok Default Harian
+                </Label>
+                <div className="relative">
+                  <Input
+                    name="daily_stock"
+                    type="number"
+                    min="0"
+                    inputMode="numeric"
+                    placeholder="0 = tidak aktif"
+                    defaultValue={adjustTarget ? (initialMenus.find(m => m.id === adjustTarget.id)?.daily_stock ?? 0) : 0}
+                    className="rounded-xl border border-border h-11 min-h-[44px] pr-14 text-base"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground uppercase">
+                    porsi
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Jumlah stok yang akan di-reset setiap hari. Set 0 untuk nonaktifkan.
+                </p>
+              </div>
             </div>
             <DialogFooter className="p-6 bg-muted/30 border-t border-border flex flex-row gap-3">
               <Button
@@ -432,6 +525,45 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* RESET DAILY STOCK CONFIRMATION */}
+      <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+        <AlertDialogContent className="bg-white rounded-2xl border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-lg font-bold">
+              <RotateCcw className="text-brand-secondary" size={20} aria-hidden="true" />
+              Reset Stok Harian
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground">
+              Semua menu yang memiliki stok harian akan di-reset ke nilai defaultnya.
+              {(() => {
+                const configured = initialMenus.filter(m => (m.daily_stock ?? 0) > 0)
+                return configured.length > 0 ? (
+                  <span className="block mt-2 text-foreground font-medium">
+                    {configured.length} menu akan di-reset: {configured.slice(0, 3).map(m => m.name).join(', ')}
+                    {configured.length > 3 && `, dan ${configured.length - 3} lainnya`}.
+                  </span>
+                ) : null
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isResetting}
+              className="rounded-xl font-semibold"
+            >
+              Batalkan
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleResetDailyStock}
+              disabled={isResetting}
+              className="bg-brand-primary hover:bg-brand-primary/90 text-white rounded-xl font-semibold"
+            >
+              {isResetting ? 'Mereset...' : 'Ya, Reset Stok'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

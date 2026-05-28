@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { InventoryManager } from '@/components/admin/InventoryManager'
-import { getInventoryHistory, getCriticalStockAlerts } from '@/actions/admin'
+import { getInventoryHistory, getCriticalStockAlerts } from '@/actions/admin/inventory'
 import { StockAlertBanner } from '@/components/admin/StockAlertBanner'
 import InventoryLoading from './loading'
 import { getCachedMenusForInventory } from '@/lib/cache/menus'

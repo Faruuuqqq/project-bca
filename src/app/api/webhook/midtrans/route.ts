@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
+import { deductStockForOrder } from '@/lib/stock'
 
 export async function POST(request: Request) {
   try {
@@ -43,6 +44,14 @@ export async function POST(request: Request) {
       }
       
       console.log(`Order ${order_id} marked as PAID via Midtrans Webhook`)
+
+      // 4. Deduct stock for all items in this order (idempotent)
+      try {
+        await deductStockForOrder(order_id, supabase)
+      } catch (stockError) {
+        // Log but don't fail the webhook — payment is already recorded
+        console.error(`[Stock] Deduction failed for order ${order_id}:`, stockError)
+      }
     }
 
     return NextResponse.json({ status: 'ok' })

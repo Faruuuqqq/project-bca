@@ -1,47 +1,20 @@
-import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { verifyToken, ADMIN_COOKIE_NAME } from '@/lib/admin-auth'
 
 export async function proxy(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
+  const { pathname } = request.nextUrl
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
+  if (pathname.startsWith('/admin')) {
+    const pinCookie = request.cookies.get(ADMIN_COOKIE_NAME)
+    const isAuthenticated = pinCookie ? verifyToken(pinCookie.value) : false
 
-  // IMPORTANT: Avoid writing any logic between createServerClient and
-  // getUser(). A simple mistake can make it very hard to debug issues with sessions
-  // being lost because of race conditions.
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (request.nextUrl.pathname.startsWith('/admin')) {
-    if (!user && request.nextUrl.pathname !== '/admin/login') {
-      return NextResponse.redirect(new URL('/admin/login', request.url))
+    if (!isAuthenticated) {
+      // Not authenticated — redirect to kiosk home
+      return NextResponse.redirect(new URL('/', request.url))
     }
   }
 
-  return supabaseResponse
+  return NextResponse.next({ request })
 }
 
 export const config = {

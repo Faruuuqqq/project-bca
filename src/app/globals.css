@@ -81,6 +81,18 @@
     overflow-y: auto;
     scroll-behavior: smooth;
   }
+
+  .animate-shake {
+    animation: shake 0.4s ease-in-out;
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
 }
 
 /* Custom Scrollbar — wider for touch devices */
@@ -104,5 +116,118 @@
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
+  }
+}
+
+/* ========================================
+   THERMAL RECEIPT PRINT STYLES (58mm)
+   ======================================== */
+
+/* Receipt styles — hidden on screen, visible only during print */
+.receipt-container {
+  font-family: 'Courier New', Courier, monospace;
+    font-size: 11px;
+    line-height: 1.3;
+  color: #000;
+}
+
+.receipt-content {
+  width: 48mm; /* 58mm paper - margins */
+  padding: 4mm 0;
+}
+
+.receipt-center {
+  text-align: center;
+}
+
+.receipt-bold {
+  font-weight: bold;
+}
+
+.receipt-lg {
+  font-size: 13px;
+}
+
+.receipt-sm {
+  font-size: 9px;
+}
+
+.receipt-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 1px 0;
+}
+
+.receipt-divider {
+  border-top: 1px dashed #000;
+  margin: 4px 0;
+}
+
+.receipt-divider-double {
+  border-top: 2px solid #000;
+  margin: 6px 0;
+}
+
+.receipt-item {
+  margin-bottom: 2px;
+}
+
+.receipt-options {
+  font-size: 10px;
+  padding-left: 16px;
+  color: #333;
+  font-style: italic;
+}
+
+.receipt-footer {
+  margin-top: 4px;
+}
+
+.receipt-spacer {
+  height: 20mm;
+}
+
+/* Print media query — hide screen UI, show receipt */
+@media print {
+  /* Hide everything on screen */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Show only the receipt */
+  .receipt-container,
+  .receipt-container * {
+    visibility: visible !important;
+    display: block;
+  }
+
+  .receipt-container {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 58mm;
+    margin: 0;
+    padding: 0;
+    background: white;
+  }
+
+  .receipt-row {
+    display: flex !important;
+  }
+
+  /* Page settings for thermal paper */
+  @page {
+    margin: 0;
+    padding: 0;
+    size: 58mm auto;
+  }
+
+  /* Remove backgrounds and shadows for clean print */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    box-shadow: none !important;
   }
 }

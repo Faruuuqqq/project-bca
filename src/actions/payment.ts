@@ -5,6 +5,7 @@ import { midtransCore } from '@/lib/midtrans'
 import { midtransRateLimiter } from '@/lib/midtrans/rate-limiter'
 import { logMidtransTransaction } from '@/lib/midtrans/monitor'
 import { retryWithBackoff, withTimeout } from '@/lib/midtrans/retry'
+import { deductStockForOrder } from '@/lib/stock'
 
 /**
  * Cek Status Pembayaran ke Midtrans & Update DB (Manual Inquiry)
@@ -112,6 +113,11 @@ export async function checkPaymentStatus(orderId: string) {
         http_status: transaction.http_status || null,
         metadata: { retriesAttempted: retryResult.retriesAttempted },
       })
+
+      // Deduct stock for paid order (idempotent)
+      deductStockForOrder(orderId, supabase).catch((e) =>
+        console.error(`[Stock] Deduction failed for order ${orderId}:`, e)
+      )
       
       return { status: 'paid' }
     }
@@ -184,6 +190,12 @@ export async function confirmCashPayment(orderId: string, pin: string) {
     .single()
 
   if (error) throw new Error('Gagal mengonfirmasi pembayaran')
+
+  // Deduct stock for paid order (idempotent)
+  deductStockForOrder(orderId, supabase).catch((e) =>
+    console.error(`[Stock] Deduction failed for order ${orderId}:`, e)
+  )
+
   return { success: true, order: data }
 }
 

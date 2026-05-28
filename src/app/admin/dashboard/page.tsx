@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { getDashboardStats } from '@/actions/admin'
+import { getDashboardStats } from '@/actions/admin/analytics'
 import DashboardClient from '@/components/admin/DashboardClient'
 import DashboardLoading from './loading'
 import type { DashboardRange } from '@/types/dashboard'
