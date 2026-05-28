@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { getPaymentHistory, getPaymentStatistics } from '@/actions/admin'
+import { getPaymentHistory, getPaymentStatistics } from '@/actions/admin/payments'
 import PaymentHistoryPage from '@/components/admin/PaymentHistoryPage'
 import PaymentHistoryLoading from './loading'
 

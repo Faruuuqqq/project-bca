@@ -73,10 +73,6 @@ export default function AdminLayout({
     startTransition(() => setIsMobileOpen(false))
   }, [pathname])
 
-  if (pathname === '/admin/login') {
-    return <>{children}</>
-  }
-
   return (
     <div className="flex min-h-screen bg-[#f0f7ff]">
       {/* Mobile top bar (<lg) */}

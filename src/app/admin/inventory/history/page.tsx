@@ -1,18 +1,19 @@
+import { Suspense } from 'react'
 import { InventoryHistoryPage } from '@/components/admin/InventoryHistoryPage'
-import { getInventoryHistory } from '@/actions/admin'
+import { getInventoryHistory } from '@/actions/admin/inventory'
 import { createClient } from '@/lib/supabase/server'
+import InventoryLoading from '../loading'
 
-export default async function HistoryPage() {
+async function HistoryContent() {
   const supabase = await createClient()
   
-  // Get all menus for filter dropdown
-  const { data: menus } = await supabase
-    .from('menus')
-    .select('id, name')
-    .order('name', { ascending: true })
-
-  // Get all history
-  const history = await getInventoryHistory()
+  const [{ data: menus }, history] = await Promise.all([
+    supabase
+      .from('menus')
+      .select('id, name')
+      .order('name', { ascending: true }),
+    getInventoryHistory(),
+  ])
 
   return (
     <div className="p-8">
@@ -21,5 +22,13 @@ export default async function HistoryPage() {
         menus={menus || []}
       />
     </div>
+  )
+}
+
+export default function HistoryPage() {
+  return (
+    <Suspense fallback={<InventoryLoading />}>
+      <HistoryContent />
+    </Suspense>
   )
 }

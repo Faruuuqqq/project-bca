@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { getTopSellingMenus } from '@/actions/admin'
+import { getTopSellingMenus } from '@/actions/admin/payments'
 import MenuSalesHistoryPage from '@/components/admin/MenuSalesHistoryPage'
 import SalesHistoryLoading from './loading'
 

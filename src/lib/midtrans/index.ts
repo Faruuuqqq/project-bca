@@ -14,12 +14,12 @@ const isProduction = process.env.MIDTRANS_IS_PRODUCTION === 'true'
 
 // Validate environment variables at module load time
 const serverKey = process.env.MIDTRANS_SERVER_KEY?.trim()
-const clientKey = process.env.MIDTRANS_CLIENT_KEY?.trim()
+const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY?.trim()
 
 if (!serverKey || !clientKey) {
   const missingVars = []
   if (!serverKey) missingVars.push('MIDTRANS_SERVER_KEY')
-  if (!clientKey) missingVars.push('MIDTRANS_CLIENT_KEY')
+  if (!clientKey) missingVars.push('NEXT_PUBLIC_MIDTRANS_CLIENT_KEY')
   
   throw new Error(
     `CRITICAL: Midtrans API keys not configured in environment variables.\n` +

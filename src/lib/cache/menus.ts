@@ -28,7 +28,7 @@ export const getCachedMenusForInventory = cache(async () => {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('menus')
-    .select('id, name, current_stock, price, critical_stock_threshold, categories!inner(name)')
+    .select('id, name, current_stock, daily_stock, price, critical_stock_threshold, categories!inner(name)')
     .order('name', { ascending: true })
 
   if (error) throw new Error(error.message)
