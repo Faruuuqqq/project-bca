@@ -21,7 +21,7 @@ export function useIdleTimer(callback: () => void, timeout: number = 120000) {
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart']
     
     events.forEach(event => {
-      window.addEventListener(event, handleEvents)
+      window.addEventListener(event, handleEvents, { passive: true })
     })
 
     // Start the timer on mount

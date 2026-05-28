@@ -35,27 +35,27 @@ export function CartSidebar({ onCheckout, hidden = false }: CartSidebarProps) {
       className={cn(
         // Only show on md+ screens
         'hidden md:flex flex-col',
-        'w-[300px] lg:w-[340px] shrink-0',
-        'bg-white border-l border-zinc-100 shadow-[-20px_0_60px_rgba(0,0,0,0.04)]',
+        'w-[340px] lg:w-[400px] xl:w-[440px] shrink-0',
+        'bg-white border-l border-zinc-100 shadow-[-30px_0_60px_rgba(0,0,0,0.05)]',
         'h-full relative z-10'
       )}
     >
       {/* HEADER */}
-      <div className="px-6 py-5 border-b border-zinc-100 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-brand-primary flex items-center justify-center text-white shadow-md shadow-blue-100">
-            <ShoppingBasket size={20} />
+      <div className="px-6 py-6 lg:py-8 border-b border-zinc-100 shrink-0 bg-white">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 lg:h-14 lg:w-14 rounded-2xl bg-brand-primary flex items-center justify-center text-white shadow-lg shadow-brand-primary/20">
+            <ShoppingBasket size={24} className="lg:w-7 lg:h-7" />
           </div>
           <div>
-            <h2 className="font-black text-[#3d2b1f] uppercase text-sm tracking-tight leading-none">
+            <h2 className="font-black text-[#3d2b1f] uppercase text-base lg:text-lg tracking-tight leading-none">
               Keranjang
             </h2>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge className="bg-brand-primary text-white border-none text-[9px] font-black uppercase px-2 py-0.5 rounded-md">
+            <div className="flex items-center gap-2 mt-2">
+              <Badge className="bg-brand-primary text-white border-none text-[10px] lg:text-xs font-black uppercase px-2.5 py-0.5 rounded-md">
                 {orderType === 'dine-in' ? 'Dine-in' : 'Take-away'}
               </Badge>
               {totalItems > 0 && (
-                <span className="text-[10px] font-bold text-muted-foreground">
+                <span className="text-[11px] lg:text-xs font-bold text-muted-foreground uppercase tracking-widest">
                   {totalItems} item
                 </span>
               )}
@@ -65,60 +65,60 @@ export function CartSidebar({ onCheckout, hidden = false }: CartSidebarProps) {
       </div>
 
       {/* ITEMS */}
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="px-4 py-4 space-y-3">
+      <ScrollArea className="flex-1 min-h-0 bg-zinc-50/50">
+        <div className="px-5 py-5 lg:px-6 space-y-4">
           {items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-zinc-300">
-              <ShoppingBasket size={40} className="opacity-20 mb-3" />
-              <p className="font-black uppercase tracking-widest text-[10px]">
+            <div className="flex flex-col items-center justify-center py-24 text-zinc-300">
+              <ShoppingBasket size={56} className="opacity-20 mb-4" />
+              <p className="font-black uppercase tracking-widest text-xs lg:text-sm text-zinc-400">
                 Keranjang Kosong
               </p>
-              <p className="text-[9px] mt-1 opacity-70">Pilih menu untuk memulai</p>
+              <p className="text-[10px] lg:text-xs mt-1.5 opacity-70 font-medium">Silakan pilih menu untuk memulai</p>
             </div>
           ) : (
             items.map((item, idx) => (
               <div
                 key={`${item.menuId}-${idx}`}
-                className="bg-zinc-50/80 p-3.5 rounded-2xl border border-zinc-100 group"
+                className="bg-white p-5 lg:p-6 rounded-3xl border border-zinc-100 shadow-sm"
               >
-                <div className="flex items-start justify-between gap-2 mb-2.5">
+                <div className="flex items-start justify-between gap-3 mb-4">
                   <div className="flex-1 min-w-0">
-                    <p className="font-black text-[#3d2b1f] text-xs uppercase tracking-tight leading-tight truncate">
+                    <p className="font-black text-[#3d2b1f] text-sm lg:text-base uppercase tracking-tight leading-tight line-clamp-2">
                       {item.name}
                     </p>
                     {item.options && item.options.length > 0 && (
-                      <p className="text-[9px] text-zinc-400 font-semibold uppercase tracking-tight mt-0.5 truncate">
+                      <p className="text-[10px] lg:text-xs text-zinc-400 font-semibold uppercase tracking-tight mt-1 truncate">
                         {item.options.map((o) => o.valueLabel).join(' • ')}
                       </p>
                     )}
                   </div>
-                  <p className="text-xs font-black text-brand-primary shrink-0 tabular-nums">
+                  <p className="text-sm lg:text-base font-black text-brand-primary shrink-0 tabular-nums">
                     Rp {new Intl.NumberFormat('id-ID').format(item.subtotal)}
                   </p>
                 </div>
 
                 {/* Qty Controls */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-8 w-8 rounded-xl border-zinc-200 hover:border-red-200 hover:text-red-500 transition-colors"
+                    className="h-10 w-10 lg:h-12 lg:w-12 rounded-[1rem] border-zinc-200 bg-zinc-50 hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-colors touch-manipulation shadow-sm"
                     onClick={() => updateQty(item.menuId, -1, getOptionsHash(item.options))}
                   >
-                    {item.quantity === 1 ? <Trash2 size={13} /> : <Minus size={13} />}
+                    {item.quantity === 1 ? <Trash2 size={16} /> : <Minus size={18} />}
                   </Button>
-                  <span className="w-6 text-center text-sm font-black tabular-nums text-[#3d2b1f]">
+                  <span className="w-8 lg:w-10 text-center text-base lg:text-xl font-black tabular-nums text-[#3d2b1f]">
                     {item.quantity}
                   </span>
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-8 w-8 rounded-xl border-zinc-200 hover:border-brand-primary hover:text-brand-primary transition-colors"
+                    className="h-10 w-10 lg:h-12 lg:w-12 rounded-[1rem] border-zinc-200 bg-zinc-50 hover:bg-brand-primary hover:border-brand-primary hover:text-white transition-colors touch-manipulation shadow-sm"
                     onClick={() => updateQty(item.menuId, 1, getOptionsHash(item.options))}
                   >
-                    <Plus size={13} />
+                    <Plus size={18} />
                   </Button>
-                  <span className="ml-auto text-[9px] font-bold text-zinc-400 uppercase">
+                  <span className="ml-auto text-[10px] lg:text-xs font-bold text-zinc-400 uppercase tracking-widest">
                     @Rp {new Intl.NumberFormat('id-ID').format(item.price)}
                   </span>
                 </div>
@@ -129,18 +129,18 @@ export function CartSidebar({ onCheckout, hidden = false }: CartSidebarProps) {
       </ScrollArea>
 
       {/* FOOTER */}
-      <div className="px-4 py-4 border-t border-zinc-100 shrink-0 bg-white">
+      <div className="px-5 py-6 lg:px-6 lg:py-8 border-t border-zinc-100 shrink-0 bg-white">
         {/* Total */}
-        <div className="flex items-end justify-between mb-4">
+        <div className="flex items-end justify-between mb-5 lg:mb-6">
           <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-1">
+            <p className="text-[10px] lg:text-xs font-black uppercase tracking-[0.2em] text-zinc-400 mb-1.5">
               Total Pembayaran
             </p>
-            <p className="text-2xl font-black text-brand-primary tracking-tighter tabular-nums">
+            <p className="text-3xl lg:text-4xl font-black text-brand-primary tracking-tighter tabular-nums leading-none">
               Rp {new Intl.NumberFormat('id-ID').format(totalPrice)}
             </p>
           </div>
-          <Badge className="bg-zinc-800 text-white border-none text-[9px] font-black uppercase px-2 py-0.5 rounded-md">
+          <Badge className="bg-zinc-800 text-white border-none text-[9px] lg:text-[10px] font-black uppercase px-2.5 py-1 rounded-md">
             Inkl. Pajak
           </Badge>
         </div>
@@ -148,22 +148,17 @@ export function CartSidebar({ onCheckout, hidden = false }: CartSidebarProps) {
         {/* Checkout Button */}
         <Button
           className={cn(
-            'w-full h-14 rounded-2xl font-black text-sm uppercase tracking-tight',
-            'bg-brand-primary text-white border-b-4 border-blue-900',
-            'shadow-lg shadow-blue-100 hover:bg-blue-800 active:scale-[0.98] transition-all',
+            'w-full h-16 lg:h-20 rounded-[1.5rem] lg:rounded-[2rem] font-black text-base lg:text-xl uppercase tracking-tight',
+            'bg-brand-primary text-white border-b-[6px] border-blue-900 touch-manipulation',
+            'shadow-[0_15px_30px_rgba(6,103,172,0.3)] hover:bg-blue-800 active:scale-[0.98] transition-all',
             'disabled:opacity-50 disabled:cursor-not-allowed'
           )}
           disabled={items.length === 0}
           onClick={onCheckout}
         >
-          <CreditCard size={18} className="mr-2" />
+          <CreditCard size={24} className="mr-3" />
           Bayar Sekarang
         </Button>
-
-        {/* Keyboard hint */}
-        <p className="text-center text-[9px] text-zinc-300 font-semibold uppercase tracking-widest mt-3">
-          ↑↓←→ Navigasi · Enter Pilih · Esc Tutup
-        </p>
       </div>
     </aside>
   )

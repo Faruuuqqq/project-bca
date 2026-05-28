@@ -78,10 +78,10 @@ export default function OrderTypePage() {
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-white p-4 text-center overflow-hidden animate-in fade-in duration-700">
       {/* Logo */}
       <div className="mb-4 md:mb-8 shrink-0 flex flex-col items-center">
-        <img 
-          src="/logo-kalintang.png" 
-          alt="Ayam Kalintang" 
-          className="h-32 md:h-[200px] w-auto object-contain drop-shadow-xl" 
+        <img
+          src="/logo-kalintang.png"
+          alt="Ayam Kalintang"
+          className="h-32 md:h-[200px] w-auto object-contain drop-shadow-xl"
         />
         <div className="mt-2 md:mt-3 flex flex-col items-center opacity-40">
           <div className="h-1 w-12 bg-brand-secondary rounded-full mb-2" />
@@ -135,9 +135,9 @@ export default function OrderTypePage() {
       <button
         onClick={() => setShowPin(true)}
         aria-label="Admin login"
-        className="fixed bottom-4 right-4 h-10 w-10 flex items-center justify-center rounded-full bg-zinc-100 text-zinc-300 opacity-30 hover:opacity-70 transition-opacity duration-300"
+        className="fixed bottom-6 right-6 h-16 w-16 flex items-center justify-center rounded-full bg-zinc-100 text-zinc-400 opacity-40 hover:opacity-100 transition-opacity duration-300 shadow-md hover:shadow-xl"
       >
-        <Lock size={16} />
+        <Lock size={32} />
       </button>
 
       {/* PIN Modal Overlay */}
@@ -168,13 +168,12 @@ export default function OrderTypePage() {
               {Array.from({ length: PIN_LENGTH }).map((_, i) => (
                 <div
                   key={i}
-                  className={`h-4 w-4 rounded-full transition-all duration-200 ${
-                    i < pin.length
+                  className={`h-4 w-4 rounded-full transition-all duration-200 ${i < pin.length
                       ? error
                         ? 'bg-red-500 scale-110'
                         : 'bg-brand-primary scale-110'
                       : 'bg-zinc-200'
-                  } ${error && i < pin.length ? 'animate-shake' : ''}`}
+                    } ${error && i < pin.length ? 'animate-shake' : ''}`}
                 />
               ))}
             </div>

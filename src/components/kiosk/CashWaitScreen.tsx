@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState, useCallback, startTransition } from 'react'
+import { useEffect, useState, useCallback, startTransition, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Banknote, Clock, ArrowRight, KeyRound, Loader2, AlertTriangle, Lock } from 'lucide-react'
+import { Banknote, Clock, ArrowRight, KeyRound, Loader2, AlertTriangle, Lock, ShieldAlert, CheckCircle2, ChevronLeft, Delete } from 'lucide-react'
 import { useCartStore } from '@/store/cart'
 import { confirmCashPayment, verifyRecoveryCode } from '@/actions/payment'
 import { toast } from 'sonner'
@@ -16,6 +16,58 @@ interface CashWaitScreenProps {
   queueNumber: string
   customerName?: string
   onCancel: () => void
+}
+
+function PinPad({
+  onKeyPress,
+  onDelete,
+  onClear,
+  disabled
+}: {
+  onKeyPress: (key: string) => void
+  onDelete: () => void
+  onClear: () => void
+  disabled?: boolean
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-3 md:gap-4 mt-6 w-full max-w-xs mx-auto">
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+        <Button
+          key={num}
+          variant="outline"
+          disabled={disabled}
+          className="h-14 lg:h-16 text-xl lg:text-2xl font-black rounded-2xl bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white active:bg-white/20 touch-manipulation"
+          onClick={() => onKeyPress(num.toString())}
+        >
+          {num}
+        </Button>
+      ))}
+      <Button
+        variant="outline"
+        disabled={disabled}
+        className="h-14 lg:h-16 text-sm lg:text-base font-bold rounded-2xl bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-red-400 active:bg-red-500/30 touch-manipulation"
+        onClick={onClear}
+      >
+        C
+      </Button>
+      <Button
+        variant="outline"
+        disabled={disabled}
+        className="h-14 lg:h-16 text-xl lg:text-2xl font-black rounded-2xl bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white active:bg-white/20 touch-manipulation"
+        onClick={() => onKeyPress('0')}
+      >
+        0
+      </Button>
+      <Button
+        variant="outline"
+        disabled={disabled}
+        className="h-14 lg:h-16 rounded-2xl bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white active:bg-white/20 touch-manipulation flex items-center justify-center"
+        onClick={onDelete}
+      >
+        <Delete size={24} />
+      </Button>
+    </div>
+  )
 }
 
 export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }: CashWaitScreenProps) {
@@ -31,6 +83,7 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
   const [attempts, setAttempts] = useState(10)
   const [isLocked, setIsLocked] = useState(false)
   const [backupCode, setBackupCode] = useState('')
+  const pinInputRef = useRef<HTMLInputElement>(null)
 
   const handleSuccess = useCallback(() => {
     clearCart()
@@ -117,6 +170,8 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
           toast.error('Akses Terkunci! Masukkan kode recovery.')
         } else {
           toast.error(`PIN Salah! Sisa ${remaining} percobaan.`)
+          // Auto focus back on error for better iPad experience
+          setTimeout(() => pinInputRef.current?.focus(), 100)
         }
       } else {
         toast.success('Pembayaran Tunai Dikonfirmasi!')
@@ -132,50 +187,70 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-zinc-50 lg:flex-row overflow-hidden animate-in fade-in duration-300">
-      {/* Left Side: Customer Info */}
-      <div className="flex-1 flex flex-col overflow-y-auto border-b lg:border-b-0 lg:border-r border-zinc-100">
-        <div className="bg-brand-primary p-6 lg:p-8 text-white text-center shrink-0 shadow-lg">
-          <h2 className="text-2xl lg:text-3xl font-bold italic tracking-wider uppercase">Pembayaran Tunai</h2>
-          <p className="text-sm lg:text-base opacity-80">Silakan ke kasir untuk membayar</p>
+    <div className="fixed inset-0 z-50 flex flex-col md:flex-row bg-[#EEF6FF] overflow-hidden animate-in fade-in duration-300">
+      
+      {/* ─── LEFT SIDE: CUSTOMER INFO ─── */}
+      <div className="flex-1 flex flex-col relative bg-white shadow-2xl z-10 rounded-b-[2rem] md:rounded-r-[3rem] md:rounded-bl-none overflow-hidden border-r border-blue-50">
+        
+        {/* Header Action */}
+        <div className="absolute top-6 left-6 z-20">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onCancel}
+            className="h-12 w-12 rounded-2xl bg-white shadow-md text-zinc-400 hover:text-brand-primary active:scale-90 transition-all border border-zinc-100 touch-manipulation"
+          >
+            <ChevronLeft size={24} />
+          </Button>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center p-8 lg:p-12 text-center min-h-[500px] lg:min-h-0">
-          <div className="mb-6 p-6 lg:p-8 bg-white rounded-full shadow-lg border border-zinc-50">
-            <Banknote size={64} className="lg:w-24 lg:h-24 text-brand-primary" />
+        <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-12 lg:p-16 text-center touch-scroll overflow-y-auto">
+          
+          <div className="mb-6 lg:mb-8 relative">
+            <div className="absolute inset-0 bg-brand-primary/10 rounded-full blur-xl animate-pulse" />
+            <div className="relative p-6 lg:p-8 bg-white rounded-full shadow-xl shadow-brand-primary/10 border border-blue-50">
+              <Banknote className="w-16 h-16 lg:w-20 lg:h-20 text-brand-primary" />
+            </div>
           </div>
 
-          <div className="space-y-1 mb-8 lg:mb-12">
-            <p className="text-brand-neutral font-black uppercase tracking-widest text-[10px] lg:text-xs">Nomor Antrean Anda</p>
-            <h3 className="text-[120px] lg:text-[160px] font-black text-brand-primary leading-none tracking-tighter">
+          <div className="space-y-2 mb-10 lg:mb-14">
+            <p className="text-brand-neutral font-black uppercase tracking-[0.25em] text-xs lg:text-sm">Nomor Antrean Anda</p>
+            <h3 className="text-8xl lg:text-[140px] font-black text-[#1a1a2e] leading-none tracking-tighter drop-shadow-sm">
               {queueNumber}
             </h3>
+            {customerName && (
+              <p className="text-xl font-bold text-brand-primary mt-4">{customerName}</p>
+            )}
           </div>
 
-          <div className="w-full max-w-sm lg:max-w-md p-6 lg:p-8 bg-white rounded-[2rem] lg:rounded-[2.5rem] shadow-xl space-y-6 lg:space-y-8 border border-zinc-100">
-            <div className="flex items-center gap-4 lg:gap-6 text-left">
-              <div className="h-12 lg:h-14 w-12 lg:w-14 shrink-0 rounded-2xl lg:rounded-3xl bg-brand-primary/10 flex items-center justify-center text-brand-primary">
-                <Clock size={24} className="lg:w-7 lg:h-7" />
+          {/* Info Cards */}
+          <div className="w-full max-w-md bg-white rounded-[2rem] shadow-lg shadow-blue-900/5 p-6 lg:p-8 space-y-6 lg:space-y-8 border border-blue-50">
+            <div className="flex items-start gap-5 lg:gap-6 text-left">
+              <div className="h-14 w-14 shrink-0 rounded-2xl bg-brand-primary/10 flex items-center justify-center text-brand-primary mt-1">
+                <Clock size={28} />
               </div>
               <div>
-                <p className="font-bold text-sm lg:text-base text-[#3d2b1f]">Menunggu Kasir</p>
-                <p className="text-[11px] lg:text-xs text-zinc-500 leading-tight">Berikan nomor antrean di atas kepada petugas kasir.</p>
+                <p className="font-black text-lg lg:text-xl text-[#1a1a2e] mb-1">Menunggu Kasir</p>
+                <p className="text-sm text-zinc-500 leading-relaxed font-medium">Tunjukkan nomor antrean Anda kepada petugas kasir untuk menyelesaikan pembayaran.</p>
               </div>
             </div>
-            <div className="flex items-center gap-4 lg:gap-6 text-left border-t pt-6">
-              <div className="h-12 lg:h-14 w-12 lg:w-14 shrink-0 rounded-2xl lg:rounded-3xl bg-green-100 flex items-center justify-center text-green-600">
-                <ArrowRight size={24} className="lg:w-7 lg:h-7" />
+            
+            <div className="h-px bg-zinc-100 w-full" />
+            
+            <div className="flex items-start gap-5 lg:gap-6 text-left">
+              <div className="h-14 w-14 shrink-0 rounded-2xl bg-green-50 flex items-center justify-center text-green-500 mt-1">
+                <CheckCircle2 size={28} />
               </div>
               <div>
-                <p className="font-bold text-sm lg:text-base text-[#3d2b1f]">Otomatis Berlanjut</p>
-                <p className="text-[11px] lg:text-xs text-zinc-500 leading-tight">Layar ini akan berubah otomatis setelah pembayaran lunas.</p>
+                <p className="font-black text-lg lg:text-xl text-[#1a1a2e] mb-1">Otomatis Berlanjut</p>
+                <p className="text-sm text-zinc-500 leading-relaxed font-medium">Layar ini akan berpindah secara otomatis setelah pembayaran dikonfirmasi oleh sistem.</p>
               </div>
             </div>
           </div>
           
           <Button 
             variant="ghost" 
-            className="mt-12 lg:mt-16 text-zinc-400 text-xs lg:text-sm font-medium hover:bg-transparent hover:text-red-500 transition-colors"
+            className="mt-10 h-14 px-8 rounded-2xl text-zinc-400 font-bold uppercase tracking-widest text-xs hover:bg-red-50 hover:text-red-500 transition-all touch-manipulation"
             onClick={onCancel}
           >
             Batalkan Pesanan
@@ -183,93 +258,131 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
         </div>
       </div>
 
-      {/* Right Side: Cashier PIN Box */}
-      <div className="w-full lg:w-[450px] xl:w-[520px] bg-white lg:border-l shadow-2xl p-8 lg:p-10 xl:p-12 flex flex-col justify-center shrink-0 relative overflow-hidden">
+      {/* ─── RIGHT SIDE: CASHIER PIN BOX ─── */}
+      <div className="w-full md:w-[480px] lg:w-[560px] bg-[#1a1a2e] text-white flex flex-col justify-center shrink-0 relative overflow-hidden touch-scroll">
+        
+        {/* Ambient background styling */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-brand-primary/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-brand-secondary/10 rounded-full blur-[80px] translate-y-1/3 -translate-x-1/4" />
+
         {isLocked && (
-          <div className="absolute inset-0 z-40 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
-            <div className="h-20 lg:h-24 w-20 lg:w-24 bg-red-50 rounded-full flex items-center justify-center text-red-500 mb-6 shadow-lg shadow-red-100 animate-bounce">
-              <Lock size={40} className="lg:w-12 lg:h-12" />
+          <div className="absolute inset-0 z-40 bg-[#1a1a2e]/95 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
+            <div className="h-24 w-24 bg-red-500/20 rounded-full flex items-center justify-center text-red-500 mb-8 shadow-[0_0_60px_rgba(239,68,68,0.3)] animate-pulse">
+              <Lock size={48} />
             </div>
-            <h4 className="text-2xl lg:text-3xl font-black text-[#3d2b1f] uppercase tracking-tight mb-2">Sistem Terkunci</h4>
-            <p className="text-xs lg:text-sm text-zinc-400 leading-relaxed mb-8 max-w-[250px]">Keamanan aktif karena 10x kesalahan. Hubungi Supervisor untuk memasukkan kode pemulihan.</p>
+            <h4 className="text-3xl lg:text-4xl font-black text-white uppercase tracking-tight mb-4">Sistem Terkunci</h4>
+            <p className="text-base text-zinc-400 leading-relaxed mb-10 max-w-sm">Keamanan aktif karena 10x kesalahan berturut-turut. Hubungi Supervisor untuk memasukkan kode pemulihan.</p>
             
-            <div className="w-full space-y-4 lg:space-y-5">
+            <div className="w-full max-w-sm space-y-5">
               <Input
+                readOnly
                 type="password"
                 inputMode="numeric"
                 maxLength={4}
-                placeholder="Recovery Code"
-                className="h-14 lg:h-16 text-center text-2xl lg:text-3xl tracking-[0.5em] rounded-2xl border-2 border-brand-primary focus:ring-0 bg-white"
+                placeholder="RECOVERY"
+                className="h-16 lg:h-20 text-center text-3xl lg:text-4xl tracking-[0.5em] rounded-2xl border-2 border-red-500/50 bg-black/40 focus:border-red-500 focus:ring-0 text-white placeholder:text-zinc-700 uppercase font-black"
                 value={backupCode}
                 onChange={(e) => setBackupCode(e.target.value)}
                 disabled={isVerifyingRecovery}
               />
+              <PinPad
+                disabled={isVerifyingRecovery}
+                onKeyPress={(key) => {
+                  if (backupCode.length < 4) setBackupCode((prev) => prev + key)
+                }}
+                onDelete={() => setBackupCode((prev) => prev.slice(0, -1))}
+                onClear={() => setBackupCode('')}
+              />
               <Button 
-                className="w-full h-14 lg:h-16 rounded-2xl lg:rounded-3xl bg-brand-primary text-white text-lg lg:text-xl font-black hover:bg-blue-900 shadow-lg active:scale-95 transition-all"
+                className="w-full h-16 lg:h-18 rounded-2xl bg-red-600 text-white text-lg font-black hover:bg-red-700 shadow-xl shadow-red-900/50 active:scale-[0.98] transition-all touch-manipulation uppercase tracking-widest"
                 onClick={handleBackupUnlock}
                 disabled={isVerifyingRecovery || backupCode.length < 4}
               >
-                {isVerifyingRecovery ? <Loader2 className="animate-spin" /> : 'BUKA KUNCI'}
+                {isVerifyingRecovery ? <Loader2 className="animate-spin h-6 w-6" /> : 'Buka Kunci'}
               </Button>
             </div>
           </div>
         )}
 
-        <div className="space-y-8 lg:space-y-10">
-          <div className="text-center space-y-3 lg:space-y-4">
-            <div className="mx-auto h-16 lg:h-20 w-16 lg:w-20 rounded-[1.5rem] lg:rounded-[2rem] bg-zinc-50 flex items-center justify-center text-zinc-400 border border-zinc-100">
-              <KeyRound size={32} className="lg:w-10 lg:h-10" />
+        <div className="p-8 md:p-12 lg:p-16 space-y-10 lg:space-y-12 relative z-10 w-full max-w-[500px] mx-auto">
+          <div className="text-center space-y-5">
+            <div className="mx-auto h-20 w-20 lg:h-24 lg:w-24 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center text-brand-secondary shadow-lg">
+              <KeyRound size={40} className="lg:w-12 lg:h-12" />
             </div>
-            <div className="space-y-1 lg:space-y-2">
-              <h4 className="text-xl lg:text-2xl font-black text-[#3d2b1f] uppercase tracking-tight">Otoritas Kasir</h4>
-              <p className="text-xs lg:text-sm text-zinc-400 max-w-[200px] mx-auto">Masukkan PIN rahasia untuk konfirmasi pembayaran tunai</p>
+            <div className="space-y-2">
+              <h4 className="text-2xl lg:text-3xl font-black text-white uppercase tracking-tight">Otoritas Kasir</h4>
+              <p className="text-sm lg:text-base text-zinc-400 font-medium">Masukkan PIN rahasia untuk otorisasi pembayaran</p>
             </div>
           </div>
 
-          <div className="space-y-6 lg:space-y-7">
-            <div className="space-y-3 lg:space-y-4 text-center">
-              <div className="flex items-center justify-between px-1 mb-1 lg:mb-2">
-                <Label htmlFor="cashier-pin" className="text-[10px] lg:text-xs font-black uppercase tracking-[0.2em] text-zinc-400">Pin Keamanan</Label>
+          <div className="space-y-8">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-2">
+                <Label htmlFor="cashier-pin" className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">PIN Keamanan</Label>
                 {attempts < 10 && (
-                  <span className={`text-[10px] lg:text-xs font-black uppercase ${attempts <= 3 ? 'text-red-500 animate-pulse' : 'text-orange-500'}`}>
-                    Sisa {attempts}x Percobaan
+                  <span className={`text-xs font-black uppercase tracking-wider ${attempts <= 3 ? 'text-red-400 animate-pulse' : 'text-brand-secondary'}`}>
+                    Sisa {attempts}x
                   </span>
                 )}
               </div>
-              <Input
-                id="cashier-pin"
-                type="password"
-                inputMode="numeric"
-                maxLength={4}
-                placeholder="••••"
-                className={`h-20 lg:h-24 text-center text-4xl lg:text-5xl tracking-[0.8em] rounded-[1.5rem] lg:rounded-[2rem] border-2 transition-all bg-zinc-50/50 ${attempts <= 3 ? 'border-red-100 focus:border-red-500' : 'border-zinc-100 focus:border-brand-primary'} focus:ring-0`}
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                disabled={isConfirming || isLocked}
-              />
+              
+              <div className="relative group">
+                <Input
+                  ref={pinInputRef}
+                  readOnly
+                  id="cashier-pin"
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="••••"
+                  className={`h-24 lg:h-28 text-center text-5xl lg:text-6xl tracking-[0.6em] lg:tracking-[0.8em] rounded-3xl border-2 transition-all bg-black/40 font-black text-white placeholder:text-zinc-800 ${
+                    attempts <= 3 
+                      ? 'border-red-500/50 focus:border-red-500' 
+                      : 'border-white/10 focus:border-brand-primary'
+                  } focus:ring-0 shadow-inner`}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} // Ensure numeric only visually
+                  disabled={isConfirming || isLocked}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && pin.length >= 4) {
+                      handleCashierConfirm()
+                    }
+                  }}
+                />
+                <div className="absolute inset-0 rounded-3xl ring-4 ring-brand-primary/20 opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
+              </div>
             </div>
 
+            <PinPad
+              disabled={isConfirming || isLocked}
+              onKeyPress={(key) => {
+                if (pin.length < 4) setPin((prev) => prev + key)
+              }}
+              onDelete={() => setPin((prev) => prev.slice(0, -1))}
+              onClear={() => setPin('')}
+            />
+
             <Button 
-              className="w-full h-20 lg:h-24 rounded-[1.5rem] lg:rounded-[2rem] bg-brand-primary text-white text-xl lg:text-2xl font-black hover:bg-blue-900 transition-all shadow-xl active:scale-[0.98] disabled:bg-zinc-200"
+              className="w-full h-20 lg:h-24 rounded-3xl bg-brand-primary text-white text-xl lg:text-2xl font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-[0_10px_40px_rgba(6,103,172,0.4)] active:scale-[0.98] disabled:bg-white/10 disabled:text-white/30 disabled:shadow-none touch-manipulation"
               onClick={handleCashierConfirm}
               disabled={isConfirming || pin.length < 4 || isLocked}
             >
-              {isConfirming ? <Loader2 className="animate-spin h-8 w-8 lg:h-10 lg:w-10 text-white" /> : 'KONFIRMASI LUNAS'}
+              {isConfirming ? <Loader2 className="animate-spin h-8 w-8 text-white" /> : 'Konfirmasi Lunas'}
             </Button>
             
             {attempts <= 3 && !isLocked && (
-              <div className="flex items-center gap-2 justify-center text-red-500 bg-red-50 py-3 lg:py-4 rounded-xl lg:rounded-2xl border border-red-100 animate-bounce">
-                <AlertTriangle size={16} className="lg:w-5 lg:h-5" />
-                <span className="text-[10px] lg:text-xs font-black uppercase">Peringatan Keamanan Aktif</span>
+              <div className="flex items-center gap-3 justify-center text-red-400 bg-red-500/10 py-4 px-6 rounded-2xl border border-red-500/20">
+                <ShieldAlert size={20} className="shrink-0" />
+                <span className="text-xs font-black uppercase tracking-widest leading-tight">Peringatan Keamanan Aktif</span>
               </div>
             )}
           </div>
           
-          <div className="pt-4 lg:pt-6">
-            <div className="flex items-center gap-2 justify-center text-[10px] lg:text-xs text-zinc-300 font-bold uppercase tracking-widest">
-              <div className="h-px w-8 bg-zinc-100"></div>
-              Staf Ayam Kalintang
-              <div className="h-px w-8 bg-zinc-100"></div>
+          <div className="pt-6 lg:pt-10">
+            <div className="flex items-center gap-4 justify-center text-[10px] text-zinc-600 font-black uppercase tracking-[0.3em]">
+              <div className="h-px w-12 bg-white/10" />
+              Staf Internal
+              <div className="h-px w-12 bg-white/10" />
             </div>
           </div>
         </div>
