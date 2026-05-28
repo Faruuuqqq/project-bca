@@ -90,7 +90,8 @@ export async function getMidtransStats(hours: number = 24) {
         charge: { total: 0, success: 0, failed: 0 },
         status: { total: 0, success: 0, failed: 0 },
         webhook: { total: 0, success: 0, failed: 0 },
-      },
+        cancel: { total: 0, success: 0, failed: 0 },
+      } as Record<string, { total: number; success: number; failed: number }>,
       recentErrors: [] as Array<{ order_id: string; error: string; timestamp: string }>,
     }
 
