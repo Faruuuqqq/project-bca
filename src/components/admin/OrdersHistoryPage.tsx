@@ -1,11 +1,18 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Calendar, Search, Filter } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Calendar, Search, Filter, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { cn, formatRupiah, formatDateTime } from '@/lib/utils'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { adminTokens } from '@/components/admin/_tokens'
@@ -53,6 +60,7 @@ export default function OrdersHistoryPage({
   const [search, setSearch] = useState(searchQuery)
   const [status, setStatus] = useState(statusFilter)
   const [showFilters, setShowFilters] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
 
   const handleSearch = (value: string) => {
     setSearch(value)
@@ -180,12 +188,13 @@ export default function OrdersHistoryPage({
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Pembayaran</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Waktu</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground">Aksi</th>
               </tr>
             </thead>
             <tbody>
               {initialOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
                     <div className="space-y-2">
                       <div className="text-lg font-semibold">Tidak ada pesanan</div>
                       <p>Coba ubah filter pencarian Anda</p>
@@ -226,6 +235,12 @@ export default function OrdersHistoryPage({
                       <td className="px-4 py-3 text-xs text-muted-foreground">
                         {formatDateTime(order.created_at)}
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
+                          <Eye size={14} className="mr-2" />
+                          Detail
+                        </Button>
+                      </td>
                     </tr>
                   )
                 })
@@ -265,6 +280,67 @@ export default function OrdersHistoryPage({
           </Button>
         </div>
       </div>
+
+      {/* ORDER DETAIL DIALOG */}
+      <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
+        <DialogContent className="sm:max-w-[425px] bg-white" showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Detail Pesanan {selectedOrder?.id.slice(0, 8)}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-muted-foreground">Waktu:</span>
+              <span className="font-medium">{selectedOrder ? formatDateTime(selectedOrder.created_at) : ''}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-muted-foreground">Tipe:</span>
+              <Badge className={cn('text-xs', selectedOrder ? getOrderTypeBadge(selectedOrder.order_type).color : '')}>
+                {selectedOrder ? getOrderTypeBadge(selectedOrder.order_type).label : ''}
+              </Badge>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-muted-foreground">Status:</span>
+              <Badge className={cn('text-xs', selectedOrder ? getStatusBadge(selectedOrder.order_status, selectedOrder.payment_status).color : '')}>
+                {selectedOrder ? getStatusBadge(selectedOrder.order_status, selectedOrder.payment_status).label : ''}
+              </Badge>
+            </div>
+            <div className="flex justify-between items-center text-sm border-b pb-4">
+              <span className="text-muted-foreground">Pembayaran:</span>
+              <Badge className={cn('text-xs', selectedOrder ? getPaymentBadge(selectedOrder.payment_method).color : '')}>
+                {selectedOrder ? getPaymentBadge(selectedOrder.payment_method).label : ''}
+              </Badge>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <h4 className="text-sm font-semibold">Daftar Menu</h4>
+              <div className="max-h-[200px] overflow-y-auto space-y-2 pr-2">
+                {selectedOrder?.order_items?.map((item, idx) => (
+                  <div key={idx} className="flex justify-between text-sm">
+                    <div className="flex gap-2">
+                      <span className="font-medium">{item.quantity}x</span>
+                      <span>{item.menu_name}</span>
+                    </div>
+                    <span className="text-muted-foreground">{formatRupiah(item.menu_price * item.quantity)}</span>
+                  </div>
+                ))}
+                {!selectedOrder?.order_items?.length && (
+                  <div className="text-sm text-muted-foreground italic">Tidak ada detail item.</div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center font-bold text-lg pt-4 border-t">
+              <span>Total</span>
+              <span>{selectedOrder ? formatRupiah(selectedOrder.total_price) : ''}</span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedOrder(null)} className="w-full sm:w-auto">
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
