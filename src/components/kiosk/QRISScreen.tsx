@@ -198,60 +198,39 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
 
             {/* Right Side: QR Container */}
             <div className="flex flex-col items-center animate-in fade-in slide-in-from-right duration-700 h-full justify-center">
-              <p className="lg:hidden text-sm font-black text-zinc-400 uppercase tracking-widest mb-6 text-center">
+              <p className="lg:hidden text-sm font-black text-zinc-400 uppercase tracking-widest mb-4 text-center">
                 Scan via <span className="text-brand-primary">myBCA / BCA Mobile</span>
               </p>
 
-              <div className="relative p-6 md:p-10 bg-white rounded-[3.5rem] shadow-[0_40px_100px_rgba(6,103,172,0.15)] border-8 border-white">
-                <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-brand-primary text-white px-8 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-xl">
+              <div className="relative p-6 bg-white rounded-3xl shadow-[0_20px_60px_rgba(6,103,172,0.15)] flex flex-col items-center">
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-brand-primary text-white px-8 py-2 rounded-full text-xs font-black uppercase tracking-[0.2em] shadow-xl whitespace-nowrap">
                   Pindai QRIS
                 </div>
                 
-                <div className="bg-white p-3 rounded-[2rem] border-4 border-zinc-50 shadow-inner overflow-hidden flex items-center justify-center min-h-[300px] min-w-[300px]">
+                <div className="bg-white flex items-center justify-center mt-2 aspect-square">
                   {qrContent ? (
                     qrContent.startsWith('http') ? (
-                      <img src={qrContent} alt="QRIS" className="w-full h-full object-contain" />
+                      <img src={qrContent} alt="QRIS" className="w-[320px] h-[320px] md:w-[400px] md:h-[400px] object-contain" />
                     ) : (
                       <QRCodeSVG 
                         value={qrContent} 
-                        size={280}
+                        size={400}
                         level="H"
                         includeMargin={false}
-                        className="max-w-full h-auto"
+                        className="w-[320px] h-[320px] md:w-[400px] md:h-[400px] max-w-full h-auto"
                       />
                     )
                   ) : (
-                    <div className="flex flex-col items-center gap-4 text-zinc-300">
+                    <div className="flex flex-col items-center justify-center gap-4 text-zinc-300 w-[320px] h-[320px] md:w-[400px] md:h-[400px]">
                       <AlertCircle size={48} />
-                      <p className="text-[10px] font-black uppercase tracking-widest text-center px-8">Gagal memuat QRIS. Silakan coba lagi.</p>
+                      <p className="text-[10px] md:text-xs font-black uppercase tracking-widest text-center px-8">Gagal memuat QRIS. Silakan coba lagi.</p>
                     </div>
                   )}
                 </div>
 
-                <div className="mt-8 flex flex-col items-center gap-2 opacity-40">
-                  <div className="h-1 w-12 bg-zinc-100 rounded-full" />
-                  <p className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.4em]">Merchant ID: BC001293</p>
+                <div className="mt-6 opacity-40">
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.4em]">Merchant ID: BC001293</p>
                 </div>
-              </div>
-
-              <div className="mt-10 w-full max-w-sm flex flex-col gap-4">
-                <Button 
-                  variant="outline"
-                  className="w-full h-14 border-2 border-brand-primary/20 text-brand-primary font-black uppercase tracking-widest text-[11px] rounded-2xl bg-white shadow-lg shadow-blue-50 hover:bg-brand-primary hover:text-white transition-all group"
-                  onClick={checkStatusManual}
-                  disabled={isChecking}
-                >
-                  {isChecking ? <Loader2 className="animate-spin mr-2" /> : <RefreshCw className="mr-2 h-4 w-4 group-hover:rotate-180 transition-transform duration-500" />}
-                  Cek Status Pembayaran
-                </Button>
-
-                <Button 
-                  variant="ghost" 
-                  className="w-full h-10 text-zinc-300 font-bold uppercase tracking-[0.2em] text-[10px] hover:text-red-500 hover:bg-transparent transition-all"
-                  onClick={onCancel}
-                >
-                  Ganti Metode Pembayaran
-                </Button>
               </div>
             </div>
 
@@ -259,14 +238,37 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
         )}
       </div>
 
-      {/* Trust Footer */}
-      <footer className="p-5 bg-zinc-50 border-t flex items-center justify-center gap-6 shrink-0 z-10">
-        <div className="flex items-center gap-2">
-          <ShieldCheck size={16} className="text-green-600" />
-          <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Aman & Terenkripsi BCA</span>
+      {/* Trust Footer & Action Buttons */}
+      <footer className="px-6 py-4 bg-zinc-50 border-t flex flex-col md:flex-row items-center justify-between gap-4 shrink-0 z-10 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
+        
+        {/* Left: Cancel Button */}
+        <Button 
+          variant="ghost" 
+          className="w-full md:w-auto h-12 md:h-14 px-6 text-zinc-500 font-bold uppercase tracking-[0.15em] text-[10px] md:text-xs hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all"
+          onClick={onCancel}
+        >
+          <ChevronLeft className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+          Ganti Metode
+        </Button>
+
+        {/* Center: Trust Info */}
+        <div className="hidden md:flex flex-col items-center gap-1 opacity-70">
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={16} className="text-green-600" />
+            <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Aman & Terenkripsi BCA</span>
+          </div>
+          <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest text-center">Verified by BI-SNAP • Anti Double Payment</p>
         </div>
-        <div className="h-4 w-px bg-zinc-200" />
-        <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Verified by BI-SNAP • Anti Double Payment Protection</p>
+
+        {/* Right: Check Status Button */}
+        <Button 
+          className="w-full md:w-auto h-12 md:h-14 px-8 bg-brand-primary text-white font-black uppercase tracking-widest text-[10px] md:text-xs rounded-2xl shadow-lg shadow-brand-primary/20 hover:bg-blue-700 active:scale-95 transition-all group"
+          onClick={checkStatusManual}
+          disabled={isChecking}
+        >
+          {isChecking ? <Loader2 className="animate-spin mr-2 h-4 w-4 md:h-5 md:w-5" /> : <RefreshCw className="mr-2 h-4 w-4 md:h-5 md:w-5 group-hover:rotate-180 transition-transform duration-500" />}
+          Cek Status Pembayaran
+        </Button>
       </footer>
     </div>
   )

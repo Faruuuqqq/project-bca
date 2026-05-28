@@ -1,23 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 
-/**
- * Midtrans Transaction Monitoring & Logging
- * FIX #3: Adds visibility into payment system health
- * 
- * Tracks all Midtrans API interactions:
- * - QRIS generation attempts (success/failure)
- * - Status check inquiries
- * - Webhook deliveries
- * - Response times & errors
- * 
- * Enables:
- * - Performance monitoring
- * - Error pattern analysis
- * - Payment failure debugging
- * - SLA reporting
- */
+// Initialize Supabase service-role client to bypass RLS for logging
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseServiceRole = createClient(supabaseUrl, supabaseServiceKey)
 
-export type MidtransTransactionType = 'charge' | 'status' | 'webhook'
+export type MidtransTransactionType = 'charge' | 'status' | 'cancel'
 export type MidtransTransactionStatus = 'success' | 'failed' | 'timeout'
 
 interface MidtransTransactionLog {
@@ -37,27 +25,17 @@ interface MidtransTransactionLog {
  */
 export async function logMidtransTransaction(log: MidtransTransactionLog) {
   try {
-    const supabase = await createClient()
-    
-    // Build the log entry with all details
     const logEntry = {
-      order_id: log.order_id,
-      transaction_type: log.transaction_type,
-      status: log.status,
-      amount: log.amount || null,
-      error_message: log.error_message || null,
-      response_time_ms: log.response_time_ms || null,
-      http_status: log.http_status || null,
-      metadata: log.metadata ? JSON.stringify(log.metadata) : null,
+      ...log,
       created_at: new Date().toISOString(),
     }
 
     // Insert with timeout - don't block if DB is slow
     const { error } = await Promise.race<{ error?: Error | null }>([ 
-      supabase.from('midtrans_transactions').insert([logEntry]),
-      new Promise((_, reject) =>
+      supabaseServiceRole.from('midtrans_transactions').insert([logEntry]),
+      new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Logging timeout')), 2000)
-      ),
+      )
     ]) as { error?: Error | null }
 
     if (error) {
@@ -76,11 +54,10 @@ export async function logMidtransTransaction(log: MidtransTransactionLog) {
  */
 export async function getMidtransStats(hours: number = 24) {
   try {
-    const supabase = await createClient()
     const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString()
 
     // Get all transactions in time range
-    const { data, error } = await supabase
+    const { data, error } = await supabaseServiceRole
       .from('midtrans_transactions')
       .select('*')
       .gte('created_at', cutoffTime)

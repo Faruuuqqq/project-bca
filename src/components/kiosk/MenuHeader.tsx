@@ -10,11 +10,12 @@ import Link from 'next/link'
 export function MenuHeader() {
   const orderType = useCartStore((state) => state.orderType)
   const [currentTime, setCurrentTime] = useState('')
-  const [isOnline, setIsOnline] = useState(() =>
-    typeof navigator !== 'undefined' ? navigator.onLine : true
-  )
+  const [isOnline, setIsOnline] = useState(true)
 
   useEffect(() => {
+    // Prevent hydration mismatch by setting the actual state after mount
+    setIsOnline(navigator.onLine)
+
     // 1. Time Update
     const updateTime = () => {
       const now = new Date()
@@ -45,8 +46,8 @@ export function MenuHeader() {
         
         {/* Sisi Kiri: Logo & Navigasi */}
         <div className="flex items-center gap-3 md:gap-8">
-          <Link href="/">
-            <Button variant="ghost" size="icon" className="h-12 w-12 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-all active:scale-90 border border-white/20">
+          <Link href="/" aria-label="Kembali ke halaman awal" title="Kembali ke halaman awal">
+            <Button variant="ghost" size="icon" aria-hidden="true" className="h-12 w-12 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-all active:scale-90 border border-white/20">
               <ChevronLeft size={20} className="stroke-[3]" />
             </Button>
           </Link>
