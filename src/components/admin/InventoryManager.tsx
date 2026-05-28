@@ -338,70 +338,7 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
         </div>
       </div>
 
-      {/* MOVEMENT HISTORY - MINI */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-3">
-            <History className="text-brand-primary" size={20} aria-hidden="true" />
-            <h2 className={adminTokens.sectionTitle}>Riwayat Terbaru</h2>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push('/admin/inventory/history')}
-            className="text-xs font-semibold text-brand-primary hover:bg-blue-50 active:bg-blue-100 rounded-lg px-3 h-9 min-h-[44px]"
-          >
-            Lihat Semua
-            <ChevronRight size={14} className="ml-1" aria-hidden="true" />
-          </Button>
-        </div>
 
-        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
-          <div className="divide-y divide-border max-h-[320px] overflow-y-auto touch-scroll">
-            {(initialHistory || []).slice(0, 5).map((m) => (
-              <div key={m.id} className="flex items-center gap-3 px-5 py-3.5">
-                {/* Icon */}
-                <div className={cn(
-                  'h-8 w-8 rounded-lg flex items-center justify-center shrink-0',
-                  m.movement_type === 'in'
-                    ? 'bg-emerald-50 text-emerald-600'
-                    : 'bg-red-50 text-red-600'
-                )}>
-                  {m.movement_type === 'in' ? (
-                    <ArrowUpRight size={14} aria-hidden="true" />
-                  ) : (
-                    <ArrowDownLeft size={14} aria-hidden="true" />
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-bold text-sm text-foreground truncate">{m.menus?.[0]?.name}</p>
-                    <span className={cn(
-                      'text-xs font-bold tabular-nums shrink-0',
-                      m.movement_type === 'in' ? 'text-emerald-600' : 'text-red-600'
-                    )}>
-                      {m.movement_type === 'in' ? '+' : '-'}{m.amount}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{m.reason}</p>
-                </div>
-
-                {/* Time */}
-                <span className="text-[10px] text-muted-foreground font-medium tabular-nums shrink-0">
-                  {formatDateTime(m.created_at)}
-                </span>
-              </div>
-            ))}
-            {(!initialHistory || initialHistory.length === 0) && (
-              <div className="text-center text-sm text-muted-foreground py-10">
-                Belum ada riwayat perubahan.
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* ADJUST DIALOG */}
       <Dialog open={isAdjustDialogOpen} onOpenChange={(open) => {

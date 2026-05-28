@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Store,
   Menu as MenuIcon,
+  History,
 } from 'lucide-react'
 import { useEffect, useState, startTransition } from 'react'
 import { cn } from '@/lib/utils'
@@ -47,6 +48,8 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Antrean Dapur', href: '/admin/orders', icon: ClipboardList },
   { name: 'Katalog Menu', href: '/admin/menus', icon: UtensilsCrossed },
   { name: 'Stok Barang', href: '/admin/inventory', icon: Package },
+  { name: 'Riwayat Stok', href: '/admin/inventory/history', icon: History },
+  { name: 'Riwayat Pesanan', href: '/admin/orders/history', icon: History },
 ]
 
 // Routes that should auto-collapse the desktop sidebar (KDS needs full canvas).

@@ -705,6 +705,7 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
                     Kategori
                   </Label>
                   <Select
+                    key={editingMenu?.id || 'new'}
                     name="category_id"
                     defaultValue={editingMenu?.category_id || initialCategories[0]?.id}
                   >
