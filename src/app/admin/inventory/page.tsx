@@ -7,9 +7,9 @@ import { getCachedMenusForInventory } from '@/lib/cache/menus'
 
 async function InventoryContent() {
   // Parallel fetch: menus (cached) + history + alerts
-  const [menus, history, criticalAlerts] = await Promise.all([
+  const [menus, historyData, criticalAlerts] = await Promise.all([
     getCachedMenusForInventory(),
-    getInventoryHistory(),
+    getInventoryHistory(5, 0), // Just fetch 5 for the mini-preview
     getCriticalStockAlerts(),
   ])
 
@@ -18,7 +18,7 @@ async function InventoryContent() {
       {criticalAlerts.length > 0 && <StockAlertBanner alerts={criticalAlerts} />}
       <InventoryManager 
         initialMenus={menus} 
-        initialHistory={history || []} 
+        initialHistory={historyData.history || []} 
       />
     </div>
   )

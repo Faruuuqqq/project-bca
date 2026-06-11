@@ -47,16 +47,16 @@ export async function adjustStock(menuId: string, amount: number, reason: string
   return { success: true }
 }
 
-export async function getInventoryHistory() {
+export async function getInventoryHistory(limit: number = 20, offset: number = 0) {
   const supabase = await createClient()
-  const { data, error } = await supabase
+  const { data, error, count } = await supabase
     .from('inventory_movements')
-    .select('id, menu_id, movement_type, amount, reason, created_at, menus!inner(name)')
+    .select('id, menu_id, movement_type, amount, reason, created_at, menus!inner(name)', { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(50)
+    .range(offset, offset + limit - 1)
 
   if (error) throw new Error(error.message)
-  return data
+  return { history: data, total: count }
 }
 
 /**
