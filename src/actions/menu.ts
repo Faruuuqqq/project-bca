@@ -62,7 +62,14 @@ export async function deleteMenuImage(imageUrl: string) {
 export async function createCategory(formData: FormData) {
   const supabase = createAdminClient()
   const name = formData.get('name') as string
-  const sort_order = parseInt(formData.get('sort_order') as string || '0')
+  
+  const { data: maxCat } = await supabase
+    .from('categories')
+    .select('sort_order')
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .single()
+  const sort_order = maxCat ? (maxCat.sort_order + 1) : 1
 
   const { error } = await supabase
     .from('categories')
@@ -77,14 +84,26 @@ export async function createCategory(formData: FormData) {
 export async function updateCategory(id: string, formData: FormData) {
   const supabase = createAdminClient()
   const name = formData.get('name') as string
-  const sort_order = parseInt(formData.get('sort_order') as string || '0')
 
   const { error } = await supabase
     .from('categories')
-    .update({ name, sort_order })
+    .update({ name })
     .eq('id', id)
 
   if (error) throw new Error(error.message)
+  
+  revalidatePath('/admin/menus')
+  return { success: true }
+}
+
+export async function swapCategoryOrder(id1: string, order1: number, id2: string, order2: number) {
+  const supabase = createAdminClient()
+  
+  const { error: error1 } = await supabase.from('categories').update({ sort_order: order2 }).eq('id', id1)
+  if (error1) throw new Error(error1.message)
+
+  const { error: error2 } = await supabase.from('categories').update({ sort_order: order1 }).eq('id', id2)
+  if (error2) throw new Error(error2.message)
   
   revalidatePath('/admin/menus')
   return { success: true }

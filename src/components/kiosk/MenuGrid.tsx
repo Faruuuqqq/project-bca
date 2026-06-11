@@ -30,7 +30,7 @@ interface MenuItemData {
   is_sold_out: boolean
   current_stock: number
   category_id: string
-  categories?: { name: string }
+  categories?: { name: string } | Array<{ name: string }>
   menu_options?: Array<Record<string, unknown>>
 }
 
@@ -265,7 +265,7 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
                     <CardContent className="p-5 md:p-7 flex flex-col justify-between flex-1 gap-3">
                       <div>
                         <h3 className="line-clamp-2 font-black text-[#3d2b1f] text-base md:text-xl leading-tight uppercase tracking-tight group-hover:text-brand-primary transition-colors">{menu.name}</h3>
-                        <p className="text-[10px] text-zinc-400 font-bold uppercase mt-1.5 opacity-60 tracking-widest">{menu.categories?.name}</p>
+                        <p className="text-[10px] text-zinc-400 font-bold uppercase mt-1.5 opacity-60 tracking-widest">{Array.isArray(menu.categories) ? menu.categories[0]?.name : menu.categories?.name}</p>
                       </div>
                       <div className="flex flex-col gap-2 mt-auto">
                         <p className="text-xl md:text-2xl font-black text-brand-primary tracking-tighter leading-none">
