@@ -152,6 +152,12 @@ function computeElapsed(startTime: string) {
 
 export function OrderBoard({ initialOrders }: { initialOrders: Order[] }) {
   const [orders, setOrders] = useState<Order[]>(initialOrders)
+
+  // Sync state when props change (e.g. after full page refresh or navigation)
+  useEffect(() => {
+    setOrders(initialOrders)
+  }, [initialOrders])
+
   const [connState, setConnState] = useState<ConnState>('connecting')
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const supabase = useMemo(() => createClient(), [])

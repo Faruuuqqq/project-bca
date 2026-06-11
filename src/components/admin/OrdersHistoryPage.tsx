@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Calendar, Search, Filter, Eye } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
@@ -14,13 +13,21 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { cn, formatRupiah, formatDateTime } from '@/lib/utils'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { adminTokens } from '@/components/admin/_tokens'
+
+interface OrderItemOption {
+  id: string
+  option_name: string
+  value_label: string
+  extra_price: number
+}
 
 interface OrderItem {
   menu_name: string
   quantity: number
   menu_price: number
+  order_item_options?: OrderItemOption[]
 }
 
 interface Order {
@@ -50,49 +57,58 @@ export default function OrdersHistoryPage({
   currentPage,
   totalPages,
   totalOrders,
-  searchQuery = '',
-  statusFilter = 'all',
-  dateFrom = '',
-  dateTo = '',
 }: OrdersHistoryPageProps) {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const [search, setSearch] = useState(searchQuery)
-  const [status, setStatus] = useState(statusFilter)
-  const [showFilters, setShowFilters] = useState(false)
+
+  // Client-side filter state
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [paymentFilter, setPaymentFilter] = useState('all')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
 
-  const handleSearch = (value: string) => {
-    setSearch(value)
-    // Trigger search after user stops typing
-  }
+  // Client-side filtering — applied on top of the server-fetched page
+  const filteredOrders = useMemo(() => {
+    return initialOrders.filter((order) => {
+      const matchesSearch =
+        !search ||
+        order.id.toLowerCase().includes(search.toLowerCase()) ||
+        order.order_items?.some((item) =>
+          item.menu_name.toLowerCase().includes(search.toLowerCase())
+        )
 
-  const handleStatusChange = (newStatus: string) => {
-    setStatus(newStatus)
-  }
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'unpaid' && order.payment_status === 'unpaid') ||
+        (statusFilter === 'completed' && order.order_status === 'completed' && order.payment_status === 'paid') ||
+        (statusFilter === 'pending' && order.order_status !== 'completed' && order.payment_status === 'paid')
+
+      const matchesPayment =
+        paymentFilter === 'all' || order.payment_method === paymentFilter
+
+      return matchesSearch && matchesStatus && matchesPayment
+    })
+  }, [initialOrders, search, statusFilter, paymentFilter])
 
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams()
     params.set('page', newPage.toString())
-    if (search) params.set('search', search)
-    if (status !== 'all') params.set('status', status)
-    if (dateFrom) params.set('from', dateFrom)
-    if (dateTo) params.set('to', dateTo)
     router.push(`/admin/orders/history?${params.toString()}`)
   }
 
   const getStatusBadge = (status: string, paymentStatus: string) => {
-    const paid = paymentStatus === 'paid'
-    if (status === 'completed' && paid) {
-      return { label: 'Selesai', color: 'bg-emerald-100 text-emerald-700' }
-    }
-    if (status === 'pending' && paid) {
-      return { label: 'Diproses', color: 'bg-blue-100 text-blue-700' }
-    }
-    if (!paid) {
+    if (paymentStatus !== 'paid') {
       return { label: 'Belum Bayar', color: 'bg-amber-100 text-amber-700' }
     }
-    return { label: status, color: 'bg-gray-100 text-gray-700' }
+    if (status === 'completed') {
+      return { label: 'Selesai', color: 'bg-emerald-100 text-emerald-700' }
+    }
+    if (status === 'ready') {
+      return { label: 'Siap', color: 'bg-teal-100 text-teal-700' }
+    }
+    if (status === 'cooking') {
+      return { label: 'Dimasak', color: 'bg-orange-100 text-orange-700' }
+    }
+    return { label: 'Diproses', color: 'bg-blue-100 text-blue-700' }
   }
 
   const getPaymentBadge = (method: string) => {
@@ -119,9 +135,10 @@ export default function OrdersHistoryPage({
               variant="ghost"
               size="sm"
               onClick={() => router.push('/admin/orders')}
+              aria-label="Kembali ke antrean"
               className="mr-2"
             >
-              <ChevronLeft size={18} />
+              <ChevronLeft size={18} aria-hidden="true" />
             </Button>
             <h1 className={adminTokens.pageTitle}>Riwayat Pesanan</h1>
           </div>
@@ -132,22 +149,26 @@ export default function OrdersHistoryPage({
       </div>
 
       {/* FILTERS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Search */}
         <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
             type="text"
-            placeholder="Cari Order ID..."
+            placeholder="Cari Order ID atau nama menu..."
             value={search}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
+            aria-label="Cari pesanan"
           />
         </div>
 
+        {/* Status Filter */}
         <select
-          value={status}
-          onChange={(e) => handleStatusChange(e.target.value)}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 border border-border rounded-lg bg-card text-sm font-medium"
+          aria-label="Filter status pesanan"
         >
           <option value="all">Semua Status</option>
           <option value="pending">Diproses</option>
@@ -155,25 +176,25 @@ export default function OrdersHistoryPage({
           <option value="unpaid">Belum Bayar</option>
         </select>
 
+        {/* Payment Method Filter */}
         <select
-          value="all"
+          value={paymentFilter}
+          onChange={(e) => setPaymentFilter(e.target.value)}
           className="px-3 py-2 border border-border rounded-lg bg-card text-sm font-medium"
+          aria-label="Filter metode pembayaran"
         >
           <option value="all">Semua Pembayaran</option>
           <option value="QRIS">QRIS</option>
           <option value="CASH">Tunai</option>
         </select>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowFilters(!showFilters)}
-          className="w-full"
-        >
-          <Filter size={16} className="mr-2" />
-          Filter Lanjut
-        </Button>
       </div>
+
+      {/* Active filter result count */}
+      {(search || statusFilter !== 'all' || paymentFilter !== 'all') && (
+        <p className="text-sm text-muted-foreground">
+          Menampilkan <span className="font-bold text-foreground">{filteredOrders.length}</span> hasil dari {initialOrders.length} pesanan di halaman ini
+        </p>
+      )}
 
       {/* ORDERS TABLE */}
       <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
@@ -192,17 +213,17 @@ export default function OrdersHistoryPage({
               </tr>
             </thead>
             <tbody>
-              {initialOrders.length === 0 ? (
+              {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-muted-foreground">
                     <div className="space-y-2">
-                      <div className="text-lg font-semibold">Tidak ada pesanan</div>
+                      <div className="text-lg font-semibold">Tidak ada pesanan ditemukan</div>
                       <p>Coba ubah filter pencarian Anda</p>
                     </div>
                   </td>
                 </tr>
               ) : (
-                initialOrders.map((order) => {
+                filteredOrders.map((order) => {
                   const statusBadge = getStatusBadge(order.order_status, order.payment_status)
                   const paymentBadge = getPaymentBadge(order.payment_method)
                   const orderTypeBadge = getOrderTypeBadge(order.order_type)
@@ -237,7 +258,7 @@ export default function OrdersHistoryPage({
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
-                          <Eye size={14} className="mr-2" />
+                          <Eye size={14} className="mr-2" aria-hidden="true" />
                           Detail
                         </Button>
                       </td>
@@ -253,7 +274,7 @@ export default function OrdersHistoryPage({
       {/* PAGINATION */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="text-sm text-muted-foreground">
-          Menampilkan {(currentPage - 1) * 20 + 1}-{Math.min(currentPage * 20, totalOrders)} dari {totalOrders} pesanan
+          Halaman {currentPage} dari {totalPages} ({totalOrders} total pesanan)
         </div>
 
         <div className="flex items-center gap-2">
@@ -262,8 +283,9 @@ export default function OrdersHistoryPage({
             size="sm"
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
+            aria-label="Halaman sebelumnya"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={16} aria-hidden="true" />
           </Button>
 
           <div className="px-3 py-1.5 bg-muted rounded-lg text-sm font-semibold">
@@ -274,18 +296,19 @@ export default function OrdersHistoryPage({
             variant="outline"
             size="sm"
             onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
+            disabled={currentPage >= totalPages}
+            aria-label="Halaman berikutnya"
           >
-            <ChevronRight size={16} />
+            <ChevronRight size={16} aria-hidden="true" />
           </Button>
         </div>
       </div>
 
       {/* ORDER DETAIL DIALOG */}
       <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
-        <DialogContent className="sm:max-w-[425px] bg-white" showCloseButton={false}>
+        <DialogContent className="sm:max-w-md bg-white" showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>Detail Pesanan {selectedOrder?.id.slice(0, 8)}</DialogTitle>
+            <DialogTitle>Detail Pesanan #{selectedOrder?.id.slice(0, 8)}</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4">
             <div className="flex justify-between items-center text-sm">
@@ -311,16 +334,34 @@ export default function OrdersHistoryPage({
               </Badge>
             </div>
 
+            {/* Items with Customizations */}
             <div className="space-y-3 pt-2">
               <h4 className="text-sm font-semibold">Daftar Menu</h4>
-              <div className="max-h-[200px] overflow-y-auto space-y-2 pr-2">
+              <div className="max-h-64 overflow-y-auto space-y-3 pr-1">
                 {selectedOrder?.order_items?.map((item, idx) => (
-                  <div key={idx} className="flex justify-between text-sm">
-                    <div className="flex gap-2">
-                      <span className="font-medium">{item.quantity}x</span>
-                      <span>{item.menu_name}</span>
+                  <div key={idx} className="text-sm space-y-1">
+                    <div className="flex justify-between">
+                      <div className="flex gap-2 font-medium">
+                        <span>{item.quantity}x</span>
+                        <span>{item.menu_name}</span>
+                      </div>
+                      <span className="text-muted-foreground shrink-0">
+                        {formatRupiah(item.menu_price * item.quantity)}
+                      </span>
                     </div>
-                    <span className="text-muted-foreground">{formatRupiah(item.menu_price * item.quantity)}</span>
+                    {/* Customizations */}
+                    {item.order_item_options && item.order_item_options.length > 0 && (
+                      <div className="pl-5 space-y-0.5">
+                        {item.order_item_options.map((opt) => (
+                          <div key={opt.id} className="flex justify-between text-xs text-muted-foreground">
+                            <span>↳ {opt.option_name}: {opt.value_label}</span>
+                            {opt.extra_price > 0 && (
+                              <span>+{formatRupiah(opt.extra_price)}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
                 {!selectedOrder?.order_items?.length && (
@@ -335,8 +376,8 @@ export default function OrdersHistoryPage({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedOrder(null)} className="w-full sm:w-auto">
-              Tutup
+            <Button variant="outline" onClick={() => setSelectedOrder(null)} className="w-full">
+              TUTUP
             </Button>
           </DialogFooter>
         </DialogContent>

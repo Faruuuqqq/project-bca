@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { midtransCore } from '@/lib/midtrans'
 import { midtransRateLimiter } from '@/lib/midtrans/rate-limiter'
 import { logMidtransTransaction } from '@/lib/midtrans/monitor'
@@ -15,7 +15,7 @@ import { deductStockForOrder } from '@/lib/stock'
  * FIX #4: Retry logic with exponential backoff added
  */
 export async function checkPaymentStatus(orderId: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const startTime = Date.now()
 
   console.log(`🔍 [Inquiry] Checking Midtrans status for Order: ${orderId}`)
@@ -168,7 +168,7 @@ export async function checkPaymentStatus(orderId: string) {
  * Validasi PIN Kasir via Server-Side (Database)
  */
 export async function confirmCashPayment(orderId: string, pin: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data: config, error: configError } = await supabase
     .from('store_configs')
@@ -203,7 +203,7 @@ export async function confirmCashPayment(orderId: string, pin: string) {
  * Validasi Kode Recovery via Server-Side
  */
 export async function verifyRecoveryCode(code: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { data: config } = await supabase
     .from('store_configs')
     .select('config_value')
@@ -215,7 +215,7 @@ export async function verifyRecoveryCode(code: string) {
 }
 
 export async function completeOrder(orderId: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   // Idempotent guard: only ready orders can be marked completed.
   const { error } = await supabase
@@ -229,7 +229,7 @@ export async function completeOrder(orderId: string) {
 }
 
 export async function startCooking(orderId: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { error } = await supabase
     .from('orders')
@@ -243,7 +243,7 @@ export async function startCooking(orderId: string) {
 }
 
 export async function markReady(orderId: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { error } = await supabase
     .from('orders')
@@ -257,7 +257,7 @@ export async function markReady(orderId: string) {
 }
 
 export async function togglePriority(orderId: string, currentPriority: boolean) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { error } = await supabase
     .from('orders')

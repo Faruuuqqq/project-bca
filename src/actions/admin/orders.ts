@@ -7,7 +7,7 @@ export async function getOrdersHistory(limit: number = 100, offset: number = 0) 
   const { data, error, count } = await supabase
     .from('orders')
     .select(
-      'id, total_price, order_type, payment_method, payment_status, created_at, order_status, order_items(menu_name, quantity, menu_price)',
+      'id, total_price, order_type, payment_method, payment_status, created_at, order_status, order_items(menu_name, quantity, menu_price, order_item_options(id, option_name, value_label, extra_price))',
       { count: 'exact' }
     )
     .order('created_at', { ascending: false })

@@ -602,9 +602,9 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
       }}>
         <DialogContent
           showCloseButton={false}
-          className="max-w-lg max-h-[90vh] rounded-2xl bg-card border-border shadow-md p-0 overflow-hidden flex flex-col"
+          className="max-w-lg max-h-[90vh] rounded-2xl bg-white border-border shadow-md p-0 overflow-hidden flex flex-col"
         >
-          <form onSubmit={handleSaveMenu} className="flex flex-col flex-1 overflow-hidden">
+          <form key={editingMenu?.id || 'new'} onSubmit={handleSaveMenu} className="flex flex-col flex-1 overflow-hidden">
             <DialogHeader className="p-6 border-b border-border shrink-0">
               <DialogTitle className="text-lg font-bold text-foreground tracking-tight">
                 {editingMenu ? 'Edit Menu' : 'Tambah Menu Baru'}
@@ -792,9 +792,9 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
       <Dialog open={isCatDialogOpen} onOpenChange={setIsCatDialogOpen}>
         <DialogContent
           showCloseButton={false}
-          className="max-w-sm rounded-2xl bg-card border-border shadow-md p-0 overflow-hidden"
+          className="max-w-sm rounded-2xl bg-white border-border shadow-md p-0 overflow-hidden"
         >
-          <form onSubmit={handleSaveCat}>
+          <form key={editingCat?.id || 'new'} onSubmit={handleSaveCat}>
             <DialogHeader className="p-6 border-b border-border">
               <DialogTitle className="text-lg font-bold text-foreground tracking-tight">
                 {editingCat ? 'Edit Kategori' : 'Kategori Baru'}
@@ -856,7 +856,7 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
           if (!open) setDeleteTarget(null)
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle>
               {deleteTarget?.type === 'menu' ? 'Hapus menu?' : 'Hapus kategori?'}

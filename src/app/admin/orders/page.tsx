@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { OrderBoard } from '@/components/admin/OrderBoard'
 import OrdersLoading from './loading'
 
+export const dynamic = 'force-dynamic'
+
 async function OrdersContent() {
   const supabase = await createClient()
 

@@ -343,13 +343,16 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
       {/* ADJUST DIALOG */}
       <Dialog open={isAdjustDialogOpen} onOpenChange={(open) => {
         setIsAdjustDialogOpen(open)
-        if (!open) setAdjustTarget(null)
+        if (!open) {
+          setAdjustTarget(null)
+          // Form resets automatically because we use key={adjustTarget?.id || 'new'}
+        }
       }}>
         <DialogContent
           showCloseButton={false}
-          className="max-w-md rounded-2xl bg-card border-border shadow-md p-0 overflow-hidden"
+          className="max-w-md rounded-2xl bg-white border-border shadow-md p-0 overflow-hidden"
         >
-          <form onSubmit={handleAdjustStock}>
+          <form key={adjustTarget?.id || 'new'} onSubmit={handleAdjustStock}>
             <DialogHeader className="p-6 border-b border-border">
               <DialogTitle className="text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
                 <Settings2 className="text-brand-primary" size={18} aria-hidden="true" />
