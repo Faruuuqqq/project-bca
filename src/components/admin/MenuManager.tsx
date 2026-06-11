@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Category } from '@/types/database'
 import {
   Dialog,
@@ -88,6 +88,12 @@ type DeleteTarget =
 export function MenuManager({ initialCategories, initialMenus }: MenuManagerProps) {
   const router = useRouter()
   const [menus, setMenus] = useState<MenuItem[]>(initialMenus)
+  
+  // Sync state when props change via router.refresh()
+  useEffect(() => {
+    setMenus(initialMenus)
+  }, [initialMenus])
+
   const [isMenuDialogOpen, setIsMenuDialogOpen] = useState(false)
   const [isCatDialogOpen, setIsCatDialogOpen] = useState(false)
   const [editingMenu, setEditingMenu] = useState<MenuItem | null>(null)
