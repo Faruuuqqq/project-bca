@@ -51,11 +51,13 @@ export default function TermsAndConditions() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-2xl font-bold text-gray-900">5. Kontak dan Layanan Pelanggan</h2>
-            <p>Jika Anda memiliki pertanyaan terkait pesanan atau Syarat & Ketentuan ini, silakan hubungi kami melalui:</p>
+            <h2 className="text-2xl font-bold text-gray-900">5. Tentang Kami & Kontak Layanan</h2>
+            <p><strong>SOK Ayam Kalintang</strong> adalah penyedia layanan F&B (Food and Beverage) dengan fokus menyajikan olahan ayam terbaik. Kami berkomitmen memberikan pengalaman pemesanan yang cepat dan praktis melalui sistem Kiosk.</p>
+            <p>Jika Anda memiliki pertanyaan terkait pesanan, menu, atau Syarat & Ketentuan ini, silakan hubungi kami melalui informasi di bawah ini:</p>
             <ul className="list-none space-y-1 bg-gray-100 p-4 rounded-lg">
+              <li><strong>Nama Bisnis:</strong> SOK Ayam Kalintang</li>
               <li><strong>Email:</strong> cs@ayamkalintang.com</li>
-              <li><strong>WhatsApp:</strong> +62 812-3456-7890</li>
+              <li><strong>WhatsApp:</strong> + 62 895-6021-21652</li>
               <li><strong>Alamat:</strong> Depan Polsek Jatinangor, Cikeruh, Kec. Jatinangor, Kabupaten Sumedang, Jawa Barat 45360</li>
             </ul>
           </section>

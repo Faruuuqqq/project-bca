@@ -44,7 +44,7 @@ export default function AttractScreen() {
   }, [])
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black overflow-hidden cursor-pointer group"
       onClick={() => router.push('/order-type')}
     >
@@ -52,16 +52,15 @@ export default function AttractScreen() {
       {SLIDES.map((slide, index) => (
         <div
           key={index}
-          className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
-            index === currentSlide ? 'opacity-100 scale-105' : 'opacity-0 scale-100'
-          }`}
+          className={`absolute inset-0 transition-all duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100 scale-105' : 'opacity-0 scale-100'
+            }`}
         >
           {/* VIGNETTE OVERLAY: Menghitamkan pinggir & bawah agar teks menonjol */}
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10" />
           <div className="absolute inset-0 bg-black/20 z-0" /> {/* Dimmer tambahan */}
-          
-          <img 
-            src={slide.image} 
+
+          <img
+            src={slide.image}
             alt={slide.name}
             className="w-full h-full object-cover"
           />
@@ -75,7 +74,7 @@ export default function AttractScreen() {
 
       {/* Content Overlay */}
       <div className="absolute inset-x-0 bottom-0 z-20 p-12 md:p-24 flex flex-col items-center text-center space-y-8">
-        
+
         <div className="space-y-2 animate-in fade-in slide-in-from-bottom duration-700 delay-300">
           {/* TEXT SHADOW: Menambahkan bayangan hitam pada teks agar tidak nyaru */}
           <h2 className="text-brand-secondary text-5xl md:text-7xl font-black uppercase tracking-tighter drop-shadow-[0_5px_15px_rgba(0,0,0,0.8)]">
@@ -95,7 +94,7 @@ export default function AttractScreen() {
 
         {/* Pulsing Start Button - BLUE THEME */}
         <div className="pt-8">
-          <Button 
+          <Button
             className="h-24 px-16 rounded-full bg-brand-primary text-brand-secondary text-3xl font-black shadow-[0_20px_60px_rgba(6,103,172,0.6)] hover:scale-105 active:scale-95 transition-all animate-pulse flex items-center gap-4 border-4 border-brand-secondary/20"
           >
             SENTUH UNTUK MEMULAI
@@ -106,11 +105,10 @@ export default function AttractScreen() {
         {/* Slide Indicators */}
         <div className="flex gap-3 pt-4">
           {SLIDES.map((_, i) => (
-            <div 
-              key={i} 
-              className={`h-2 rounded-full transition-all duration-500 shadow-md ${
-                i === currentSlide ? 'w-12 bg-brand-secondary' : 'w-2 bg-white/30'
-              }`} 
+            <div
+              key={i}
+              className={`h-2 rounded-full transition-all duration-500 shadow-md ${i === currentSlide ? 'w-12 bg-brand-secondary' : 'w-2 bg-white/30'
+                }`}
             />
           ))}
         </div>
@@ -121,18 +119,25 @@ export default function AttractScreen() {
       </div>
 
       {/* Legal & Contact Footer for Midtrans Compliance */}
-      <div 
+      <div
         className="absolute bottom-0 inset-x-0 bg-black/80 backdrop-blur-sm z-30 py-3 px-6 flex flex-col md:flex-row justify-between items-center text-white/80 text-xs border-t border-white/10"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex gap-4 items-center">
-          <p className="font-semibold text-white/90">Ayam Kalintang</p>
-          <span className="hidden md:inline">•</span>
-          <p>cs@ayamkalintang.com</p>
-          <span className="hidden md:inline">•</span>
-          <p>WA: +62 812-3456-7890</p>
+        <div className="flex flex-col gap-1 items-center md:items-start">
+          <div className="flex gap-4 items-center">
+            <p className="font-semibold text-white/90">Ayam Kalintang</p>
+            <span className="hidden md:inline">•</span>
+            <p>cs@ayamkalintang.com</p>
+            <span className="hidden md:inline">•</span>
+            <p>WA: + 62 895-6021-21652</p>
+          </div>
+          <div className="text-[10px] text-white/50 flex items-center gap-2">
+            <span>Secured by Midtrans</span>
+            <span>•</span>
+            <span>Pembayaran: QRIS, GoPay, OVO, ShopeePay, Dana, LinkAja</span>
+          </div>
         </div>
-        <div className="flex gap-6 mt-2 md:mt-0">
+        <div className="flex gap-6 mt-3 md:mt-0">
           <a href="/tnc" className="hover:text-white transition-colors underline underline-offset-2">Syarat & Ketentuan</a>
           <a href="/privacy-policy" className="hover:text-white transition-colors underline underline-offset-2">Kebijakan Privasi</a>
         </div>
