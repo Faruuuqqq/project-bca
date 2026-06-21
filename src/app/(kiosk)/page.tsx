@@ -119,6 +119,24 @@ export default function AttractScreen() {
           Ayam Kalintang • Kiosk Terminal #01
         </p>
       </div>
+
+      {/* Legal & Contact Footer for Midtrans Compliance */}
+      <div 
+        className="absolute bottom-0 inset-x-0 bg-black/80 backdrop-blur-sm z-30 py-3 px-6 flex flex-col md:flex-row justify-between items-center text-white/80 text-xs border-t border-white/10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex gap-4 items-center">
+          <p className="font-semibold text-white/90">Ayam Kalintang</p>
+          <span className="hidden md:inline">•</span>
+          <p>cs@ayamkalintang.com</p>
+          <span className="hidden md:inline">•</span>
+          <p>WA: +62 812-3456-7890</p>
+        </div>
+        <div className="flex gap-6 mt-2 md:mt-0">
+          <a href="/tnc" className="hover:text-white transition-colors underline underline-offset-2">Syarat & Ketentuan</a>
+          <a href="/privacy-policy" className="hover:text-white transition-colors underline underline-offset-2">Kebijakan Privasi</a>
+        </div>
+      </div>
     </div>
   )
 }
