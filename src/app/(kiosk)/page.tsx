@@ -73,7 +73,7 @@ export default function AttractScreen() {
 
       {/* Floating Logo Overlay */}
       <div className="absolute top-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center animate-in fade-in slide-in-from-top duration-1000">
-        <Image src="/logo-kalintang.png" alt="Logo" width={256} height={224} priority unoptimized className="h-28 md:h-36 lg:h-48 w-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]" />
+        <Image src="/logo-kalintang.png" alt="Logo" width={256} height={224} priority unoptimized className="h-20 md:h-24 lg:h-32 w-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]" />
       </div>
 
       {/* Content Overlay */}

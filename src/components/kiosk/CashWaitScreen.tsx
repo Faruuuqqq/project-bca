@@ -219,7 +219,7 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
           </Button>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-8 lg:p-12 text-center touch-scroll overflow-y-auto">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-8 lg:p-12 text-center touch-scroll overflow-hidden">
           
           <div className="mb-4 lg:mb-6 relative">
             <div className="absolute inset-0 bg-brand-primary/10 rounded-full blur-xl animate-pulse" />
@@ -350,7 +350,7 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
                   inputMode="numeric"
                   maxLength={4}
                   placeholder="••••"
-                  className={`h-24 lg:h-28 text-center text-5xl lg:text-6xl tracking-[0.6em] lg:tracking-[0.8em] pl-[0.6em] lg:pl-[0.8em] rounded-3xl border-2 transition-all bg-black/40 font-black text-white placeholder:text-zinc-800 ${
+                  className={`h-24 lg:h-28 text-center text-5xl lg:text-6xl tracking-[0.6em] lg:tracking-[0.8em] rounded-3xl border-2 transition-all bg-black/40 font-black text-white placeholder:text-zinc-800 ${
                     attempts <= 3 
                       ? 'border-red-500/50 focus:border-red-500' 
                       : 'border-white/10 focus:border-brand-primary'
