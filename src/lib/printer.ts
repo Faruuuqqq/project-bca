@@ -100,7 +100,7 @@ export async function printOrderReceipt(orderId: string) {
     receiptData += "\n\n\n\n\n" + CUT_PAPER // Potong kertas konsumen
 
     // Kirim data mentah ke printer fisik via TCP Socket
-    return new Promise((resolve) => {
+    return new Promise<{ success: boolean; error?: string }>((resolve) => {
       const client = new net.Socket()
       
       // Timeout 5 detik jika printer mati/kertas habis

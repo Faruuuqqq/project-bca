@@ -123,7 +123,7 @@ export async function checkPaymentStatus(orderId: string) {
         transaction_type: 'status',
         status: 'success',
         response_time_ms: responseTime,
-        http_status: transaction.http_status || null,
+        http_status: transaction.http_status ? Number(transaction.http_status) : null,
         metadata: { retriesAttempted: retryResult.retriesAttempted },
       })
 
@@ -148,7 +148,7 @@ export async function checkPaymentStatus(orderId: string) {
       transaction_type: 'status',
       status: 'success',
       response_time_ms: responseTime,
-      http_status: transaction.http_status || null,
+      http_status: transaction.http_status ? Number(transaction.http_status) : null,
       metadata: { retriesAttempted: retryResult.retriesAttempted },
     })
 
