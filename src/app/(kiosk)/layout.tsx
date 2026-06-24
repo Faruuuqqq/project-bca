@@ -3,6 +3,8 @@
 import { useIdleTimer } from '@/hooks/use-idle-timer'
 import { useCartStore } from '@/store/cart'
 import { useRouter, usePathname } from 'next/navigation'
+import { toast } from 'sonner'
+import { KioskGuard } from '@/components/kiosk/KioskGuard'
 
 export default function KioskLayout({
   children,
@@ -17,10 +19,16 @@ export default function KioskLayout({
   useIdleTimer(() => {
     if (pathname !== '/') {
       console.log('🕒 [Idle Reset] Inactivity detected. Returning to Attract Screen.')
+      toast.info('Sesi diulang karena tidak ada aktivitas', { duration: 3000 })
       clearCart()
       router.push('/')
     }
-  }, 120000) // 2 minutes
+  }, 60000) // 60 seconds
 
-  return <>{children}</>
+  return (
+    <>
+      <KioskGuard />
+      {children}
+    </>
+  )
 }

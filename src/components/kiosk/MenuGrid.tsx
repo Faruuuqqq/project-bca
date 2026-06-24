@@ -6,19 +6,22 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
-import { CustomizationSheet } from './CustomizationSheet'
+import dynamic from 'next/dynamic'
+import Image from 'next/image'
 import { useCartStore } from '@/store/cart'
 import { ShoppingBasket, ChevronRight, Loader2 } from 'lucide-react'
-import { CartSheet } from './CartSheet'
-import { CartSidebar } from './CartSidebar'
-import { PaymentMethodModal } from './PaymentMethodModal'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { createOrder } from '@/actions/order'
-import { QRISScreen } from './QRISScreen'
-import { CashWaitScreen } from './CashWaitScreen'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+
+const CustomizationSheet = dynamic(() => import('./CustomizationSheet').then(m => m.CustomizationSheet), { ssr: false })
+const CartSheet = dynamic(() => import('./CartSheet').then(m => m.CartSheet), { ssr: false })
+const CartSidebar = dynamic(() => import('./CartSidebar').then(m => m.CartSidebar), { ssr: false })
+const PaymentMethodModal = dynamic(() => import('./PaymentMethodModal').then(m => m.PaymentMethodModal), { ssr: false })
+const QRISScreen = dynamic(() => import('./QRISScreen').then(m => m.QRISScreen), { ssr: false })
+const CashWaitScreen = dynamic(() => import('./CashWaitScreen').then(m => m.CashWaitScreen), { ssr: false })
 import { useKioskKeyboard } from '@/hooks/use-kiosk-keyboard'
 import { MenuGridSkeleton } from './MenuGridSkeleton'
 
@@ -245,10 +248,12 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
                   >
                     <div className="aspect-square bg-zinc-50 relative overflow-hidden shrink-0 w-full">
                       {menu.image_url ? (
-                        <img 
+                        <Image 
                           src={menu.image_url} 
-                          alt={menu.name} 
-                          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          alt={menu.name}
+                          fill
+                          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                          className="object-cover transition-transform duration-700 group-hover:scale-110"
                         />
                       ) : (
                         <div className="h-full w-full flex items-center justify-center text-zinc-200 p-4 text-center">
@@ -336,6 +341,7 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
         <QRISScreen 
           orderId={orderData.orderId}
           qrContent={orderData.qrContent || ''}
+          totalPrice={totalPrice}
           onCancel={() => setPaymentStep('none')}
         />
       )}
@@ -350,7 +356,7 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
       )}
 
       <CustomizationSheet 
-        menu={selectedMenu as unknown as Parameters<typeof CustomizationSheet>[0]['menu']} 
+        menu={selectedMenu as any} 
         open={isCustomSheetOpen} 
         onOpenChange={setIsCustomSheetOpen} 
       />

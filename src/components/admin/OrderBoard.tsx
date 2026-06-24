@@ -10,13 +10,15 @@ import {
   Utensils,
   Timer,
   CheckCircle2,
-  ChefHat,
   Bell,
+  Printer,
+  Trash2,
   Wifi,
   WifiOff,
 } from 'lucide-react'
-import { startCooking, markReady, completeOrder, togglePriority } from '@/actions/payment'
+import { completeOrder, togglePriority, reprintReceipt, voidOrder } from '@/actions/payment'
 import { toast } from 'sonner'
+import { playNotificationSound } from '@/lib/audio'
 import { cn, formatTime } from '@/lib/utils'
 import { adminTokens } from '@/components/admin/_tokens'
 
@@ -48,35 +50,6 @@ type Order = {
   order_items?: OrderItem[]
 }
 
-// Calculate estimated prep time based on item count and order type
-function estimatePrepTime(items: OrderItem[] = [], orderType: string) {
-  let minutes = 0
-  
-  items.forEach(item => {
-    // Base 2 mins per item
-    minutes += item.quantity * 2
-    
-    // Add extra time for complex items
-    if (item.menu_name.toLowerCase().includes('bakar') || 
-        item.menu_name.toLowerCase().includes('utuh')) {
-      minutes += 5 * item.quantity
-    }
-    
-    // Add time for customizations
-    if (item.order_item_options && item.order_item_options.length > 0) {
-      minutes += 1 * item.quantity
-    }
-  })
-  
-  // Take-away adds 2 mins for packaging
-  if (orderType === 'take-away') {
-    minutes += 2
-  }
-  
-  // Min 3 mins, Max 30 mins
-  return Math.max(3, Math.min(minutes, 30))
-}
-
 type AgeTier = {
   bucketLabel: string
   className: string
@@ -102,20 +75,17 @@ function ElapsedTimer({ startTime }: { startTime: string }) {
   const [elapsed, setElapsed] = useState<{ minutes: number; seconds: number } | null>(null)
 
   useEffect(() => {
-    // Set initial elapsed on mount (after hydration)
     const tick = () => setElapsed(computeElapsed(startTime))
     tick()
     const interval = setInterval(tick, 1000)
     return () => clearInterval(interval)
   }, [startTime])
 
-  // During SSR/hydration, render empty or placeholder
   if (elapsed === null) {
     return (
       <div
-        className="flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold text-muted-foreground bg-muted/30 rounded-md"
+        className="flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold text-muted-foreground bg-muted/30"
         role="timer"
-        aria-label="Menghitung waktu..."
       >
         <Timer size={12} aria-hidden="true" />
         <span className="tabular-nums">--:--</span>
@@ -132,7 +102,6 @@ function ElapsedTimer({ startTime }: { startTime: string }) {
         tier.className
       )}
       role="timer"
-      aria-label={`Berlalu ${elapsed.minutes} menit ${elapsed.seconds} detik`}
     >
       <Timer size={12} aria-hidden="true" />
       <span>
@@ -153,10 +122,9 @@ function computeElapsed(startTime: string) {
 export function OrderBoard({ initialOrders }: { initialOrders: Order[] }) {
   const [orders, setOrders] = useState<Order[]>(initialOrders)
   const [connState, setConnState] = useState<ConnState>('connecting')
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  
   const supabase = useMemo(() => createClient(), [])
 
-  // Realtime subscription
   useEffect(() => {
     const channel = supabase
       .channel('admin-orders')
@@ -165,7 +133,6 @@ export function OrderBoard({ initialOrders }: { initialOrders: Order[] }) {
         { event: '*', schema: 'public', table: 'orders' },
         async (payload) => {
           if (payload.eventType === 'INSERT') {
-            // Refetch with joins. Filter paid orders only.
             const { data } = await supabase
               .from('orders')
               .select('*, order_items(*, order_item_options(*))')
@@ -176,9 +143,7 @@ export function OrderBoard({ initialOrders }: { initialOrders: Order[] }) {
               setOrders((prev) =>
                 prev.find((o) => o.id === data.id) ? prev : [...prev, data as Order]
               )
-              audioRef.current?.play().catch(() => {
-                /* autoplay blocked; ignore */
-              })
+              playNotificationSound()
             }
           } else if (payload.eventType === 'UPDATE') {
             const next = payload.new as Partial<Order> & { id: string; order_status: Order['order_status']; payment_status: string }
@@ -193,9 +158,12 @@ export function OrderBoard({ initialOrders }: { initialOrders: Order[] }) {
             setOrders((prev) => {
               const exists = prev.find((o) => o.id === next.id)
               if (exists) {
+                // If it just became paid from pending, play sound
+                if (exists.payment_status !== 'paid' && next.payment_status === 'paid') {
+                   playNotificationSound()
+                }
                 return prev.map((o) => (o.id === next.id ? { ...o, ...next } : o))
               }
-              // UPDATE for an order we don't yet have (e.g. payment_status flipped to paid). Refetch.
               void (async () => {
                 const { data } = await supabase
                   .from('orders')
@@ -206,7 +174,7 @@ export function OrderBoard({ initialOrders }: { initialOrders: Order[] }) {
                   setOrders((p) =>
                     p.find((o) => o.id === data.id) ? p : [...p, data as Order]
                   )
-                  audioRef.current?.play().catch(() => {})
+                  playNotificationSound()
                 }
               })()
               return prev
@@ -228,88 +196,28 @@ export function OrderBoard({ initialOrders }: { initialOrders: Order[] }) {
     }
   }, [supabase])
 
-  // Sorted active queues
-  const cookQueue = useMemo(
+  const activeQueue = useMemo(
     () =>
       orders
         .filter(
           (o) =>
             o.payment_status === 'paid' &&
-            (o.order_status === 'pending' || o.order_status === 'cooking')
+            o.order_status !== 'completed' &&
+            o.order_status !== 'void'
         )
-        .sort(
-          (a, b) =>
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        ),
-    [orders]
-  )
-
-  const readyQueue = useMemo(
-    () =>
-      orders
-        .filter((o) => o.payment_status === 'paid' && o.order_status === 'ready')
         .sort((a, b) => {
-          const at = new Date(a.updated_at ?? a.created_at).getTime()
-          const bt = new Date(b.updated_at ?? b.created_at).getTime()
-          return at - bt
+          if (a.is_priority !== b.is_priority) {
+            return a.is_priority ? -1 : 1
+          }
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         }),
     [orders]
   )
 
-  // Keyboard shortcuts: 1-9 advance the Nth cook-queue order.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      if (
-        target &&
-        (target instanceof HTMLInputElement ||
-          target instanceof HTMLTextAreaElement ||
-          target instanceof HTMLSelectElement ||
-          target.isContentEditable)
-      ) {
-        return
-      }
-      const idx = '123456789'.indexOf(e.key)
-      if (idx === -1) return
-      const order = cookQueue[idx]
-      if (!order) return
-      e.preventDefault()
-      if (order.order_status === 'pending') {
-        startCooking(order.id)
-          .then(() => toast.success(`#${order.queue_number} mulai dimasak`))
-          .catch((err) => toast.error((err as Error).message))
-      } else if (order.order_status === 'cooking') {
-        markReady(order.id)
-          .then(() => toast.success(`#${order.queue_number} siap diambil`))
-          .catch((err) => toast.error((err as Error).message))
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [cookQueue])
-
-  const handleStart = async (order: Order) => {
-    try {
-      await startCooking(order.id)
-      toast.success(`#${order.queue_number} mulai dimasak`)
-    } catch (err) {
-      toast.error((err as Error).message)
-    }
-  }
-
-  const handleReady = async (order: Order) => {
-    try {
-      await markReady(order.id)
-      toast.success(`#${order.queue_number} siap diambil`)
-    } catch (err) {
-      toast.error((err as Error).message)
-    }
-  }
-
   const handlePickup = async (order: Order) => {
     try {
       await completeOrder(order.id)
-      toast.success(`#${order.queue_number} diambil pelanggan`)
+      toast.success(`#${order.queue_number} diserahkan ke pelanggan`)
     } catch (err) {
       toast.error((err as Error).message)
     }
@@ -325,16 +233,15 @@ export function OrderBoard({ initialOrders }: { initialOrders: Order[] }) {
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
-      {/* Audio cue (gesture-gated by browser; first click anywhere unlocks) */}
-      <audio ref={audioRef} src="/sounds/new-order.mp3" preload="auto" />
+      
 
       {/* Header */}
       <div className="flex items-start sm:items-center justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className={adminTokens.pageTitle}>Antrean Masak</h1>
+            <h1 className={adminTokens.pageTitle}>Pesanan Aktif</h1>
             <Badge className="bg-brand-secondary text-brand-primary text-xs px-2 py-0.5 font-bold rounded-md">
-              {cookQueue.length + readyQueue.length}
+              {activeQueue.length}
             </Badge>
             <ConnectionPill state={connState} />
           </div>
@@ -343,79 +250,36 @@ export function OrderBoard({ initialOrders }: { initialOrders: Order[] }) {
               className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"
               aria-hidden="true"
             />
-            <p className={adminTokens.pageSubtitle}>Kitchen Display System</p>
+            <p className={adminTokens.pageSubtitle}>Daftar pesanan yang sedang diproses</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 bg-card px-3 py-1.5 rounded-xl border border-border shadow-sm">
             <Bell size={14} className="text-muted-foreground" aria-hidden="true" />
-            <span className="text-xs font-semibold text-muted-foreground">Dapur #01</span>
+            <span className="text-xs font-semibold text-muted-foreground">Kasir Utama</span>
           </div>
         </div>
       </div>
 
-      {/* Two-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 lg:gap-3">
-        {/* COOK QUEUE — wider */}
-        <section
-          aria-labelledby="cook-queue-heading"
-          className="lg:col-span-2 space-y-2 lg:space-y-3"
-        >
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              <ChefHat size={18} className="text-brand-primary" aria-hidden="true" />
-              <h2 id="cook-queue-heading" className={adminTokens.sectionTitle}>
-                Antre Masak
-              </h2>
-              <Badge className="bg-blue-50 text-brand-primary border-none text-xs font-semibold">
-                {cookQueue.length}
-              </Badge>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 lg:gap-4 auto-rows-fr">
+        {activeQueue.map((order, idx) => (
+          <ActiveOrderCard
+            key={order.id}
+            order={order}
+            position={idx + 1}
+            onPickup={() => handlePickup(order)}
+            onTogglePriority={handleTogglePriority}
+          />
+        ))}
+        {activeQueue.length === 0 && (
+          <div className="col-span-full py-16 flex flex-col items-center justify-center text-muted-foreground gap-3 bg-card rounded-2xl border border-dashed border-border">
+            <Utensils size={32} className="opacity-30" aria-hidden="true" />
+            <p className="font-semibold text-sm uppercase tracking-wide opacity-60">
+              Tidak ada pesanan aktif
+            </p>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 lg:gap-3 auto-rows-fr">
-            {cookQueue.map((order, idx) => (
-              <CookCard
-                key={order.id}
-                order={order}
-                position={idx + 1}
-                onStart={() => handleStart(order)}
-                onReady={() => handleReady(order)}
-                onTogglePriority={handleTogglePriority}
-              />
-            ))}
-            {cookQueue.length === 0 && (
-              <EmptyState label="Tidak ada antrean masak" />
-            )}
-          </div>
-        </section>
-
-        {/* READY QUEUE */}
-        <section aria-labelledby="ready-queue-heading" className="space-y-2 lg:space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              <Bell size={18} className="text-emerald-600" aria-hidden="true" />
-              <h2 id="ready-queue-heading" className={adminTokens.sectionTitle}>
-                Siap Diambil
-              </h2>
-              <Badge className="bg-emerald-50 text-emerald-700 border-none text-xs font-semibold">
-                {readyQueue.length}
-              </Badge>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2 lg:gap-3 auto-rows-fr">
-            {readyQueue.map((order) => (
-              <ReadyCard
-                key={order.id}
-                order={order}
-                onPickup={() => handlePickup(order)}
-              />
-            ))}
-            {readyQueue.length === 0 && <EmptyState label="Belum ada pesanan siap" />}
-          </div>
-        </section>
+        )}
       </div>
     </div>
   )
@@ -426,9 +290,6 @@ function ConnectionPill({ state }: { state: ConnState }) {
     return (
       <span
         className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md text-xs font-semibold"
-        role="status"
-        aria-label="Realtime tersambung"
-        title="Realtime tersambung"
       >
         <Wifi size={12} aria-hidden="true" />
         Live
@@ -439,9 +300,6 @@ function ConnectionPill({ state }: { state: ConnState }) {
     return (
       <span
         className="inline-flex items-center gap-1 text-red-700 bg-red-50 border border-red-100 px-2 py-0.5 rounded-md text-xs font-semibold animate-pulse"
-        role="status"
-        aria-label="Realtime terputus"
-        title="Realtime terputus — refresh untuk reconnect"
       >
         <WifiOff size={12} aria-hidden="true" />
         Offline
@@ -451,23 +309,10 @@ function ConnectionPill({ state }: { state: ConnState }) {
   return (
     <span
       className="inline-flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md text-xs font-semibold"
-      role="status"
-      aria-label="Menyambungkan realtime"
     >
       <Wifi size={12} aria-hidden="true" />
       Sambung...
     </span>
-  )
-}
-
-function EmptyState({ label }: { label: string }) {
-  return (
-    <div className="col-span-full py-10 flex flex-col items-center justify-center text-muted-foreground gap-2 bg-card rounded-2xl border border-dashed border-border">
-      <Utensils size={28} className="opacity-30" aria-hidden="true" />
-      <p className="font-semibold text-sm uppercase tracking-wide opacity-60">
-        {label}
-      </p>
-    </div>
   )
 }
 
@@ -480,189 +325,175 @@ function OptionsRow({ options }: { options?: OrderItemOption[] }) {
   )
 }
 
-function CookCard({
+
+function ActiveOrderCard({
   order,
   position,
-  onStart,
-  onReady,
+  onPickup,
   onTogglePriority,
 }: {
   order: Order
   position: number
-  onStart: () => void
-  onReady: () => void
+  onPickup: () => void
   onTogglePriority: (id: string, current: boolean) => void
 }) {
-  const isCooking = order.order_status === 'cooking'
   const isRush = order.is_priority
-  const estMins = estimatePrepTime(order.order_items, order.order_type)
+  const [isPrinting, setIsPrinting] = useState(false)
+  const [showVoidPin, setShowVoidPin] = useState(false)
+  const [voidPin, setVoidPin] = useState('')
+  const [isVoiding, setIsVoiding] = useState(false)
+
+  const handleReprint = async () => {
+    setIsPrinting(true)
+    const toastId = toast.loading('Mencetak ulang struk...')
+    try {
+      const res = await reprintReceipt(order.id)
+      if (res.error) throw new Error(res.error)
+      toast.success('Struk berhasil dicetak', { id: toastId })
+    } catch (err: any) {
+      toast.error(err.message, { id: toastId })
+    } finally {
+      setIsPrinting(false)
+    }
+  }
+
+  const handleVoid = async () => {
+    if (voidPin.length !== 4) return toast.error('PIN harus 4 digit')
+    setIsVoiding(true)
+    try {
+      const res = await voidOrder(order.id, voidPin)
+      if (res.error) throw new Error(res.error)
+      toast.success('Pesanan dibatalkan')
+      setShowVoidPin(false)
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setIsVoiding(false)
+      setVoidPin('')
+    }
+  }
 
   return (
     <Card className={cn(
       "rounded-2xl shadow-sm overflow-hidden flex flex-col h-full animate-in zoom-in-95 duration-200 border-2",
       isRush ? "border-red-500 shadow-red-100" : "border-transparent"
     )}>
-      <div className={cn(
-        "px-3 py-2 text-white flex justify-between items-center shrink-0",
-        isRush ? "bg-red-600" : "bg-brand-primary"
-      )}>
-        <div className="flex flex-col">
-          <span className="text-xs font-semibold uppercase tracking-wider opacity-70 inline-flex items-center gap-1">
-            {position <= 9 && (
-              <kbd className="bg-white/20 text-[10px] font-bold px-1 rounded">
-                {position}
-              </kbd>
-            )}
-            {isRush ? 'RUSH' : 'Antrean'}
-          </span>
-          <span className="text-2xl lg:text-3xl font-black tracking-tight leading-none text-white tabular-nums drop-shadow-sm">
-            #{order.queue_number}
-          </span>
-        </div>
-        <div className="flex flex-col items-end gap-0.5">
-          <Badge className="bg-white/20 text-white border-none text-[10px] lg:text-xs font-semibold px-2 py-0.5">
-            {order.order_type === 'take-away' ? 'Bawa Pulang' : 'Makan Sini'}
-          </Badge>
-          {isCooking && (
-            <Badge className="bg-amber-400 text-amber-900 border-none text-[10px] lg:text-xs font-bold px-2 py-0.5 inline-flex items-center gap-1 shadow-sm">
-              <ChefHat size={10} aria-hidden="true" />
-              Memasak
-            </Badge>
-          )}
-        </div>
-      </div>
-
-      <CardContent className="p-3 flex flex-col gap-2 flex-1 relative bg-white">
-        <div className="flex justify-between items-center border-b border-border pb-1.5 shrink-0">
-          <ElapsedTimer startTime={order.created_at} />
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] font-black uppercase text-brand-primary tracking-widest bg-blue-50 px-1.5 py-0.5 rounded">Est {estMins}m</span>
-            <div className="flex items-center text-[10px] lg:text-xs text-muted-foreground font-semibold tabular-nums">
-              <Clock size={12} className="mr-1" aria-hidden="true" />
-              {formatTime(order.created_at)}
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-1 flex-1 min-h-[60px] lg:min-h-[80px] max-h-48 lg:max-h-64 overflow-y-auto touch-scroll pr-1">
-          {order.order_items?.map((item) => (
-            <div
-              key={item.id}
-              className="text-xs lg:text-sm leading-tight border-l-2 border-brand-primary/30 pl-2 py-0.5"
-            >
-              <div className="flex gap-2">
-                <span className="font-bold text-brand-primary shrink-0 tabular-nums">
-                  {item.quantity}x
-                </span>
-                <span className="font-semibold text-foreground line-clamp-1">{item.menu_name}</span>
-              </div>
-              <OptionsRow options={item.order_item_options} />
-            </div>
-          ))}
-        </div>
-
-        <div className="flex gap-2 shrink-0">
-          <Button
-            variant="outline"
-            className={cn(
-              'h-10 lg:h-12 w-12 min-h-[40px] rounded-xl shrink-0 transition-colors',
-              isRush ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'text-zinc-400 hover:text-red-500'
-            )}
-            onClick={() => onTogglePriority(order.id, !!isRush)}
-            aria-label="Toggle Priority"
-          >
-            <Bell size={16} />
-          </Button>
+      {showVoidPin ? (
+        <div className="flex flex-col h-full p-6 items-center justify-center bg-red-50 z-10">
+          <Trash2 size={40} className="text-red-500 mb-4 animate-bounce" />
+          <h3 className="font-black text-red-700 text-lg uppercase tracking-wider mb-2">Batalkan Pesanan?</h3>
+          <p className="text-xs text-red-600/80 text-center mb-6 font-bold">Masukkan PIN Kasir untuk membatalkan antrean #{order.queue_number}</p>
           
-          {isCooking ? (
-            <Button
-              className={cn(
-                'w-full h-10 lg:h-12 min-h-[40px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl font-bold text-xs lg:text-sm shadow-sm flex items-center justify-center gap-2 shrink-0 transition-colors flex-1',
-                adminTokens.focus
-              )}
-              onClick={onReady}
-            >
-              <CheckCircle2 size={16} aria-hidden="true" />
-              Siap
+          <input 
+            type="password"
+            maxLength={4}
+            value={voidPin}
+            onChange={(e) => setVoidPin(e.target.value)}
+            className="w-full text-center text-2xl tracking-[0.5em] font-black p-4 rounded-xl border-2 border-red-200 bg-white focus:border-red-500 outline-none mb-4"
+            placeholder="PIN"
+            autoFocus
+          />
+          <div className="flex w-full gap-2">
+            <Button variant="outline" className="flex-1 rounded-xl text-zinc-500" onClick={() => { setShowVoidPin(false); setVoidPin(''); }}>
+              Kembali
             </Button>
-          ) : (
-            <Button
-              className={cn(
-                'w-full h-10 lg:h-12 min-h-[40px] bg-brand-primary hover:bg-brand-primary/90 active:bg-brand-primary/80 text-white rounded-xl font-bold text-xs lg:text-sm shadow-sm flex items-center justify-center gap-2 shrink-0 transition-colors flex-1',
-                adminTokens.focus
-              )}
-              onClick={onStart}
-            >
-              <ChefHat size={16} aria-hidden="true" />
-              Masak
+            <Button className="flex-1 rounded-xl bg-red-600 hover:bg-red-700 text-white" onClick={handleVoid} disabled={isVoiding}>
+              {isVoiding ? '...' : 'Konfirmasi'}
             </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function ReadyCard({
-  order,
-  onPickup,
-}: {
-  order: Order
-  onPickup: () => void
-}) {
-  return (
-    <Card className="rounded-2xl border-emerald-200 bg-emerald-50/40 shadow-sm overflow-hidden flex flex-col h-full animate-in zoom-in-95 duration-200">
-      <div className="bg-emerald-600 px-3 py-2 text-white flex justify-between items-center shrink-0">
-        <div className="flex flex-col">
-          <span className="text-xs font-semibold uppercase tracking-wider opacity-80">
-            Siap Diambil
-          </span>
-          <span className="text-2xl lg:text-3xl font-black tracking-tight leading-none text-white tabular-nums">
-            #{order.queue_number}
-          </span>
-        </div>
-        <Badge className="bg-white/15 text-white border-none text-[10px] lg:text-xs font-semibold px-2 py-0.5">
-          {order.order_type === 'take-away' ? 'Bawa Pulang' : 'Makan Sini'}
-        </Badge>
-      </div>
-
-      <CardContent className="p-3 flex flex-col gap-2 flex-1">
-        <div className="flex justify-between items-center border-b border-emerald-200/60 pb-1.5 shrink-0">
-          <ElapsedTimer startTime={order.created_at} />
-          <div className="flex items-center text-[10px] lg:text-xs text-muted-foreground font-semibold tabular-nums">
-            <Clock size={12} className="mr-1" aria-hidden="true" />
-            {formatTime(order.updated_at ?? order.created_at)}
           </div>
         </div>
-
-        <div className="space-y-1 flex-1 min-h-[60px] max-h-48 overflow-y-auto touch-scroll pr-1">
-          {order.order_items?.map((item) => (
-            <div
-              key={item.id}
-              className="text-xs lg:text-sm leading-tight border-l-2 border-emerald-500/40 pl-2 py-0.5"
-            >
-              <div className="flex gap-2">
-                <span className="font-bold text-emerald-700 shrink-0 tabular-nums">
-                  {item.quantity}x
-                </span>
-                <span className="font-semibold text-foreground line-clamp-1">{item.menu_name}</span>
-              </div>
-              <OptionsRow options={item.order_item_options} />
+      ) : (
+        <>
+          <div className={cn(
+            "px-3 py-3 text-white flex justify-between items-center shrink-0",
+            isRush ? "bg-red-600" : "bg-brand-primary"
+          )}>
+            <div className="flex flex-col">
+              <span className="text-xs font-semibold uppercase tracking-wider opacity-70 inline-flex items-center gap-1">
+                {isRush ? 'PRIORITAS' : `Antrean #${position}`}
+              </span>
+              <span className="text-3xl font-black tracking-tight leading-none text-white tabular-nums drop-shadow-sm">
+                #{order.queue_number}
+              </span>
             </div>
-          ))}
-        </div>
+            <div className="flex flex-col items-end gap-1">
+              <Badge className="bg-white/20 text-white border-none text-[10px] lg:text-xs font-semibold px-2 py-0.5">
+                {order.order_type === 'take-away' ? 'Bawa Pulang' : 'Makan Sini'}
+              </Badge>
+            </div>
+          </div>
 
-        <Button
-          className={cn(
-            'w-full h-10 lg:h-12 min-h-[40px] bg-foreground hover:bg-foreground/90 active:bg-foreground/80 text-background rounded-xl font-bold text-xs lg:text-sm shadow-sm flex items-center justify-center gap-2 shrink-0 transition-colors',
-            adminTokens.focus
-          )}
-          onClick={onPickup}
-        >
-          <CheckCircle2 size={16} aria-hidden="true" />
-          Diambil
-        </Button>
-      </CardContent>
+          <CardContent className="p-3 flex flex-col gap-3 flex-1 relative bg-white">
+            <div className="flex justify-between items-center border-b border-border pb-2 shrink-0">
+              <ElapsedTimer startTime={order.created_at} />
+              <div className="flex items-center gap-2 text-xs text-muted-foreground font-semibold tabular-nums">
+                <Clock size={12} className="mr-1" aria-hidden="true" />
+                {formatTime(order.created_at)}
+              </div>
+            </div>
+
+            <div className="space-y-2 flex-1 min-h-[80px] max-h-64 overflow-y-auto touch-scroll pr-1">
+              {order.order_items?.map((item) => (
+                <div
+                  key={item.id}
+                  className="text-sm leading-tight border-l-2 border-brand-primary/30 pl-2 py-0.5"
+                >
+                  <div className="flex gap-2">
+                    <span className="font-bold text-brand-primary shrink-0 tabular-nums">
+                      {item.quantity}x
+                    </span>
+                    <span className="font-semibold text-foreground line-clamp-1">{item.menu_name}</span>
+                  </div>
+                  <OptionsRow options={item.order_item_options} />
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2 shrink-0 pt-2 border-t border-border">
+              <Button
+                variant="outline"
+                className={cn(
+                  'h-12 w-12 min-h-[48px] rounded-xl shrink-0 transition-colors',
+                  isRush ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'text-zinc-400 hover:text-red-500'
+                )}
+                onClick={() => onTogglePriority(order.id, !!isRush)}
+                aria-label="Toggle Priority"
+              >
+                <Bell size={18} />
+              </Button>
+              
+              <Button
+                variant="outline"
+                className="h-12 w-12 min-h-[48px] rounded-xl shrink-0 text-blue-500 hover:text-blue-600 hover:bg-blue-50 border-blue-100 transition-colors"
+                onClick={handleReprint}
+                disabled={isPrinting}
+                aria-label="Cetak Ulang"
+              >
+                <Printer size={18} />
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-12 w-12 min-h-[48px] rounded-xl shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50 border-red-100 transition-colors"
+                onClick={() => setShowVoidPin(true)}
+                aria-label="Batalkan"
+              >
+                <Trash2 size={18} />
+              </Button>
+              
+              <Button
+                className={cn(
+                  'flex-1 h-12 min-h-[48px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl font-bold text-sm shadow-sm flex items-center justify-center gap-2 transition-colors',
+                  adminTokens.focus
+                )}
+                onClick={onPickup}
+              >
+                <CheckCircle2 size={18} aria-hidden="true" />
+              </Button>
+            </div>
+          </CardContent>
+        </>
+      )}
     </Card>
   )
 }

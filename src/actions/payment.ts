@@ -6,21 +6,14 @@ import { midtransRateLimiter } from '@/lib/midtrans/rate-limiter'
 import { logMidtransTransaction } from '@/lib/midtrans/monitor'
 import { retryWithBackoff, withTimeout } from '@/lib/midtrans/retry'
 import { deductStockForOrder } from '@/lib/stock'
+import { printOrderReceipt } from '@/lib/printer'
 
-/**
- * Cek Status Pembayaran ke Midtrans & Update DB (Manual Inquiry)
- * 
- * FIX #2: Rate limiting added
- * FIX #3: Transaction logging added
- * FIX #4: Retry logic with exponential backoff added
- */
 export async function checkPaymentStatus(orderId: string) {
   const supabase = await createClient()
   const startTime = Date.now()
 
   console.log(`🔍 [Inquiry] Checking Midtrans status for Order: ${orderId}`)
 
-  // FIX #2: Rate limiting check
   const rateLimitCheck = midtransRateLimiter.isAllowed(orderId)
   if (!rateLimitCheck.allowed) {
     console.warn(`⏱️ [Rate Limit] Order ${orderId}: ${rateLimitCheck.reason}`)
@@ -32,19 +25,17 @@ export async function checkPaymentStatus(orderId: string) {
   }
 
   try {
-    // FIX #4: Add retry logic for transient failures
     const retryResult = await retryWithBackoff(
       async () => {
-        // FIX #4: Add timeout to prevent hanging
         return await withTimeout(
           () => midtransCore.transaction.status(orderId),
-          5000 // 5 second timeout
+          5000
         )
       },
       {
-        maxRetries: 2, // Total 3 attempts (1 initial + 2 retries)
-        initialDelayMs: 1000, // 1s first retry
-        maxDelayMs: 3000, // Cap at 3s
+        maxRetries: 2,
+        initialDelayMs: 1000,
+        maxDelayMs: 3000,
       }
     )
 
@@ -52,7 +43,6 @@ export async function checkPaymentStatus(orderId: string) {
       const responseTime = Date.now() - startTime
       console.error(`❌ [Midtrans API Error] After retries (${responseTime}ms):`, retryResult.error)
       
-      // FIX #3: Log the failed API call
       await logMidtransTransaction({
         order_id: orderId,
         transaction_type: 'status',
@@ -63,7 +53,6 @@ export async function checkPaymentStatus(orderId: string) {
         metadata: { retriesAttempted: retryResult.retriesAttempted },
       })
       
-      // Fallback: Check DB instead
       const { data } = await supabase
         .from('orders')
         .select('payment_status')
@@ -89,11 +78,14 @@ export async function checkPaymentStatus(orderId: string) {
       `(${responseTime}ms, ${retryResult.retriesAttempted} retries)`
     )
 
-    // 2. Jika lunas (settlement/capture), update DB
     const isPaid = ['settlement', 'capture', 'success'].includes(transaction.transaction_status)
     
     if (isPaid) {
       console.log(`💰 [Payment Success] Updating DB for Order: ${orderId}`)
+      
+      // Check if it was already paid to prevent double-printing
+      const { data: existingOrder } = await supabase.from('orders').select('payment_status').eq('id', orderId).single()
+      
       const { error } = await supabase
         .from('orders')
         .update({ payment_status: 'paid' })
@@ -104,7 +96,6 @@ export async function checkPaymentStatus(orderId: string) {
         throw error
       }
       
-      // FIX #3: Log successful payment detection
       await logMidtransTransaction({
         order_id: orderId,
         transaction_type: 'status',
@@ -114,7 +105,14 @@ export async function checkPaymentStatus(orderId: string) {
         metadata: { retriesAttempted: retryResult.retriesAttempted },
       })
 
-      // Deduct stock for paid order (idempotent)
+      // Auto-print receipt if newly paid
+      if (existingOrder?.payment_status !== 'paid') {
+        const printRes = await printOrderReceipt(orderId) as any;
+    if (!printRes?.success) {
+      return { success: true, printerError: printRes?.error || "Gagal mencetak struk" };
+    }
+      }
+
       deductStockForOrder(orderId, supabase).catch((e) =>
         console.error(`[Stock] Deduction failed for order ${orderId}:`, e)
       )
@@ -122,7 +120,6 @@ export async function checkPaymentStatus(orderId: string) {
       return { status: 'paid' }
     }
 
-    // FIX #3: Log successful check but payment not yet made
     await logMidtransTransaction({
       order_id: orderId,
       transaction_type: 'status',
@@ -138,7 +135,6 @@ export async function checkPaymentStatus(orderId: string) {
     const errMsg = (error as Error).message
     console.error(`❌ [Unexpected Error] (${responseTime}ms):`, errMsg)
     
-    // FIX #3: Log unexpected error
     await logMidtransTransaction({
       order_id: orderId,
       transaction_type: 'status',
@@ -148,7 +144,6 @@ export async function checkPaymentStatus(orderId: string) {
       http_status: null,
     })
     
-    // Fallback: Check DB as last resort
     const { data } = await supabase
       .from('orders')
       .select('payment_status')
@@ -164,9 +159,6 @@ export async function checkPaymentStatus(orderId: string) {
   }
 }
 
-/**
- * Validasi PIN Kasir via Server-Side (Database)
- */
 export async function confirmCashPayment(orderId: string, pin: string) {
   const supabase = await createClient()
 
@@ -182,6 +174,8 @@ export async function confirmCashPayment(orderId: string, pin: string) {
     if (pin !== config.config_value) return { error: 'PIN Kasir tidak valid' }
   }
 
+  const { data: existingOrder } = await supabase.from('orders').select('payment_status').eq('id', orderId).single()
+
   const { data, error } = await supabase
     .from('orders')
     .update({ payment_status: 'paid' })
@@ -191,7 +185,11 @@ export async function confirmCashPayment(orderId: string, pin: string) {
 
   if (error) throw new Error('Gagal mengonfirmasi pembayaran')
 
-  // Deduct stock for paid order (idempotent)
+  // Trigger printer
+  if (existingOrder?.payment_status !== 'paid') {
+    printOrderReceipt(orderId).catch(console.error)
+  }
+
   deductStockForOrder(orderId, supabase).catch((e) =>
     console.error(`[Stock] Deduction failed for order ${orderId}:`, e)
   )
@@ -199,9 +197,6 @@ export async function confirmCashPayment(orderId: string, pin: string) {
   return { success: true, order: data }
 }
 
-/**
- * Validasi Kode Recovery via Server-Side
- */
 export async function verifyRecoveryCode(code: string) {
   const supabase = await createClient()
   const { data: config } = await supabase
@@ -217,42 +212,12 @@ export async function verifyRecoveryCode(code: string) {
 export async function completeOrder(orderId: string) {
   const supabase = await createClient()
 
-  // Idempotent guard: only ready orders can be marked completed.
   const { error } = await supabase
     .from('orders')
     .update({ order_status: 'completed' })
     .eq('id', orderId)
-    .eq('order_status', 'ready')
 
   if (error) throw new Error('Gagal menandai pesanan selesai')
-  return { success: true }
-}
-
-export async function startCooking(orderId: string) {
-  const supabase = await createClient()
-
-  const { error } = await supabase
-    .from('orders')
-    .update({ order_status: 'cooking' })
-    .eq('id', orderId)
-    .eq('order_status', 'pending')
-
-  if (error) throw new Error('Gagal mulai masak')
-
-  return { success: true }
-}
-
-export async function markReady(orderId: string) {
-  const supabase = await createClient()
-
-  const { error } = await supabase
-    .from('orders')
-    .update({ order_status: 'ready' })
-    .eq('id', orderId)
-    .eq('order_status', 'cooking')
-
-  if (error) throw new Error('Gagal tandai siap')
-
   return { success: true }
 }
 
@@ -267,4 +232,37 @@ export async function togglePriority(orderId: string, currentPriority: boolean) 
   if (error) throw new Error('Gagal ubah prioritas')
 
   return { success: true }
+}
+
+
+export async function reprintReceipt(orderId: string) {
+  const result = await printOrderReceipt(orderId) as any;
+  if (!result || !result.success) {
+    return { error: result?.error || 'Gagal mencetak struk' };
+  }
+  return { success: true };
+}
+
+export async function voidOrder(orderId: string, pin: string) {
+  const supabase = await createClient();
+  
+  // Verify Admin PIN
+  const { data: config } = await supabase
+    .from('store_configs')
+    .select('config_value')
+    .eq('config_key', 'cashier_pin')
+    .single();
+
+  const validPin = config ? config.config_value : '1234';
+  if (pin !== validPin) return { error: 'PIN Admin tidak valid' };
+
+  // Set order status to void
+  const { error } = await supabase
+    .from('orders')
+    .update({ order_status: 'void' })
+    .eq('id', orderId);
+
+  if (error) return { error: 'Gagal membatalkan pesanan' };
+  
+  return { success: true };
 }

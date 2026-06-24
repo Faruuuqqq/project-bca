@@ -156,7 +156,7 @@ export default function OrdersHistoryPage({
         </select>
 
         <select
-          value="all"
+          defaultValue="all"
           className="px-3 py-2 border border-border rounded-lg bg-card text-sm font-medium"
         >
           <option value="all">Semua Pembayaran</option>

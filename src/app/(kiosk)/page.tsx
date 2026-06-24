@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ChevronRight } from 'lucide-react'
+import Image from 'next/image'
 
 const SLIDES = [
   {
@@ -37,11 +38,12 @@ export default function AttractScreen() {
   const [currentSlide, setCurrentSlide] = useState(0)
 
   useEffect(() => {
+    router.prefetch('/order-type')
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % SLIDES.length)
     }, 4000)
     return () => clearInterval(timer)
-  }, [])
+  }, [router])
 
   return (
     <div 
@@ -60,17 +62,20 @@ export default function AttractScreen() {
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10" />
           <div className="absolute inset-0 bg-black/20 z-0" /> {/* Dimmer tambahan */}
           
-          <img 
+          <Image 
             src={slide.image} 
             alt={slide.name}
-            className="w-full h-full object-cover"
+            fill
+            priority={index === 0}
+            unoptimized
+            className="object-cover"
           />
         </div>
       ))}
 
       {/* Floating Logo Overlay */}
       <div className="absolute top-10 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center animate-in fade-in slide-in-from-top duration-1000">
-        <img src="/logo-kalintang.png" alt="Logo" className="h-40 md:h-56 w-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]" />
+        <Image src="/logo-kalintang.png" alt="Logo" width={256} height={224} priority unoptimized className="h-40 md:h-56 w-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]" />
       </div>
 
       {/* Content Overlay */}
