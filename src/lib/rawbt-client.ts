@@ -24,12 +24,15 @@ export async function sendToRawBT(rawbtUrl: string): Promise<boolean> {
     
     if (response.ok) {
       return true;
+    } else {
+      console.warn('RawBT local server returned non-ok status:', response.status);
     }
   } catch (err) {
-    console.warn('RawBT local server fallback:', err);
+    console.error('RawBT local server failed. Is RawBT internal web server enabled in settings?', err);
   }
   
-  // Fallback to Intent which will switch apps briefly
-  window.location.href = rawbtUrl;
-  return true;
+  // COMPLETELY removed the fallback to Intent (window.location.href = rawbtUrl)
+  // because Intent ALWAYS causes Android to switch apps, destroying the Kiosk UX.
+  // If printing fails, it's strictly because RawBT Web Server is not enabled.
+  return false;
 }

@@ -222,7 +222,7 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
             </div>
           ) : (
             <div
-              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-8 p-6 pb-40 animate-in fade-in duration-200"
+              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-8 p-6 pb-40 animate-in fade-in duration-200"
             >
               {filteredMenus.map((menu, index) => {
                 const isUnavailable = menu.is_sold_out || menu.current_stock <= 0

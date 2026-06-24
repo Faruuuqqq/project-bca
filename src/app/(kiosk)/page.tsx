@@ -72,12 +72,12 @@ export default function AttractScreen() {
       ))}
 
       {/* Floating Logo Overlay */}
-      <div className="absolute top-10 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center animate-in fade-in slide-in-from-top duration-1000">
-        <Image src="/logo-kalintang.png" alt="Logo" width={256} height={224} priority unoptimized className="h-40 md:h-56 w-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]" />
+      <div className="absolute top-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center animate-in fade-in slide-in-from-top duration-1000">
+        <Image src="/logo-kalintang.png" alt="Logo" width={256} height={224} priority unoptimized className="h-28 md:h-36 lg:h-48 w-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]" />
       </div>
 
       {/* Content Overlay */}
-      <div className="absolute inset-x-0 bottom-0 z-20 p-12 md:p-24 flex flex-col items-center text-center space-y-8">
+      <div className="absolute inset-x-0 bottom-0 z-20 p-8 md:p-12 lg:p-16 flex flex-col items-center text-center space-y-6 md:space-y-8">
 
         <div className="space-y-2 animate-in fade-in slide-in-from-bottom duration-700 delay-300">
           {/* TEXT SHADOW: Menambahkan bayangan hitam pada teks agar tidak nyaru */}

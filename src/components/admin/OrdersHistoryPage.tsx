@@ -147,6 +147,16 @@ export default function OrdersHistoryPage({
           <p className={adminTokens.pageSubtitle}>
             Total {totalOrders} pesanan | Halaman {currentPage} dari {totalPages}
           </p>
+          
+          {/* Cash/QRIS Summary for Current Filter */}
+          <div className="flex gap-3 mt-3">
+            <Badge variant="outline" className="text-indigo-700 bg-indigo-50/50 border-indigo-200">
+              QRIS: {filteredOrders.filter(o => o.payment_method === 'QRIS' && o.payment_status === 'paid').length} transaksi
+            </Badge>
+            <Badge variant="outline" className="text-orange-700 bg-orange-50/50 border-orange-200">
+              CASH: {filteredOrders.filter(o => o.payment_method === 'CASH' && o.payment_status === 'paid').length} transaksi
+            </Badge>
+          </div>
         </div>
       </div>
 
