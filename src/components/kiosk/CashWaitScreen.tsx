@@ -80,6 +80,7 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
   
   const [pin, setPin] = useState('')
   const [isConfirming, setIsConfirming] = useState(false)
+  const isConfirmingRef = useRef(false)
   const [isVerifyingRecovery, setIsVerifyingVercovery] = useState(false)
   
   // PERSISTENCE: Gunakan localStorage agar sisa percobaan tidak reset saat di-refresh
@@ -155,6 +156,8 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
   }
 
   const handleCashierConfirm = async () => {
+    if (isConfirmingRef.current) return;
+    isConfirmingRef.current = true;
     if (isLocked) return
     if (pin.length < 4) {
       toast.error('PIN minimal 4 digit')

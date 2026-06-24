@@ -58,7 +58,7 @@ export async function printOrderReceipt(orderId: string) {
       receiptData += '\n'
     })
     receiptData += ALIGN_CENTER + "--------------------------------\n"
-    receiptData += "\n\n" + CUT_PAPER // Potong kertas untuk dapur
+    receiptData += "\n" + CUT_PAPER // Potong kertas untuk dapur
 
     // --- 2. CUSTOMER COPY ---
     receiptData += INIT + ALIGN_CENTER + BOLD_ON
@@ -93,7 +93,7 @@ export async function printOrderReceipt(orderId: string) {
     receiptData += ALIGN_CENTER
     receiptData += "Terima Kasih Atas Kunjungan Anda!\n"
     receiptData += "Mohon tunggu nomor antrean Anda\ndipanggil oleh kasir.\n"
-    receiptData += "\n\n\n\n\n" + CUT_PAPER // Potong kertas konsumen
+    receiptData += "\n\n" + CUT_PAPER // Potong kertas konsumen
 
 // Generate RawBT Intent URL for Android Client
     const buffer = Buffer.from(receiptData, 'latin1')
