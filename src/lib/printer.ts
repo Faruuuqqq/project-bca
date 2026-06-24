@@ -87,7 +87,7 @@ export async function printOrderReceipt(orderId: string) {
     
     receiptData += "--------------------------------\n"
     receiptData += BOLD_ON
-    receiptData += `TOTAL: Rp ${formatCurrency(order.total_amount)}\n`
+    receiptData += `TOTAL: Rp ${formatCurrency(order.total_price)}\n`
     receiptData += BOLD_OFF
     receiptData += "================================\n"
     receiptData += ALIGN_CENTER
