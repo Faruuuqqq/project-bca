@@ -91,7 +91,7 @@ export async function printOrderReceipt(orderId: string) {
     receiptData += "Mohon tunggu nomor antrean Anda\ndipanggil oleh kasir.\n"
     receiptData += "\n\n\n\n\n" + CUT_PAPER // Potong kertas konsumen
 
-    // Generate RawBT Intent URL for Android Client
+// Generate RawBT Intent URL for Android Client
     const buffer = Buffer.from(receiptData, 'latin1')
     const base64Data = buffer.toString('base64')
     const rawbtUrl = 'intent:base64,' + base64Data + '#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;'
