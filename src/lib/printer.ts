@@ -94,7 +94,7 @@ export async function printOrderReceipt(orderId: string) {
 // Generate RawBT Intent URL for Android Client
     const buffer = Buffer.from(receiptData, 'latin1')
     const base64Data = buffer.toString('base64')
-    const rawbtUrl = 'intent:base64,' + base64Data + '#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;'
+    const rawbtUrl = 'intent:data:application/vnd.cups-raw;base64,' + base64Data + '#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;action=ru.a402d.rawbtprinter.COMMAND;S.caller=web;B.silent=true;end;'
     
     return { success: true, rawbtUrl }
 
