@@ -163,7 +163,10 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
     setIsConfirming(true)
     try {
       const result = await confirmCashPayment(orderId, pin)
-      if (result.error) {
+      if (result.rawbtUrl) {
+          window.location.href = result.rawbtUrl
+        }
+        if (result.error) {
         const remaining = attempts - 1
         setAttempts(remaining)
         setPin('')
