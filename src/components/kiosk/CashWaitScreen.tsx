@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, startTransition, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { sendToRawBT } from '@/lib/rawbt-client'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -164,7 +165,7 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
     try {
       const result = await confirmCashPayment(orderId, pin)
       if (result.rawbtUrl) {
-          window.location.href = result.rawbtUrl
+          sendToRawBT(result.rawbtUrl)
         }
         if (result.error) {
         const remaining = attempts - 1

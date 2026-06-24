@@ -9,8 +9,8 @@ const ALIGN_LEFT = ESC + 'a0'
 const ALIGN_CENTER = ESC + 'a1'
 const BOLD_ON = ESC + 'E1'
 const BOLD_OFF = ESC + 'E0'
-const DOUBLE_HEIGHT = ESC + '!1' // Double height font
-const NORMAL_FONT = ESC + '!0'
+const DOUBLE_HEIGHT = ESC + '!1' // Double height font (Kitchen copy size)
+const NORMAL_FONT = ESC + '!\x00' // Fix: reset to normal 1x1 font size
 const CUT_PAPER = GS + 'V' + String.fromCharCode(66) + String.fromCharCode(0) // Partial/Full cut
 
 function formatCurrency(amount: number) {
@@ -72,8 +72,10 @@ export async function printOrderReceipt(orderId: string) {
     receiptData += "--------------------------------\n"
     
     order.order_items?.forEach((item: any) => {
-      // Format Item Name and Qty
-      const line = `${item.menu_name.substring(0, 24).padEnd(24)} ${item.quantity}x\n`
+      // Format Item Name, Qty, and Price (32 chars max for 58mm)
+      const priceStr = formatCurrency(item.unit_price * item.quantity)
+      const nameAndQty = `${item.quantity}x ${item.menu_name}`.substring(0, 18).padEnd(18, ' ')
+      const line = `${nameAndQty} Rp${priceStr.padStart(9, ' ')}\n`
       receiptData += line
       if (item.order_item_options && item.order_item_options.length > 0) {
         const opts = item.order_item_options.map((o: any) => o.value_label).join(', ')

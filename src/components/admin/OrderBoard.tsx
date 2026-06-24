@@ -17,6 +17,7 @@ import {
   WifiOff,
 } from 'lucide-react'
 import { completeOrder, togglePriority, reprintReceipt, voidOrder } from '@/actions/payment'
+import { sendToRawBT } from '@/lib/rawbt-client'
 import { toast } from 'sonner'
 import { playNotificationSound } from '@/lib/audio'
 import { cn, formatTime } from '@/lib/utils'
@@ -355,6 +356,9 @@ function ActiveOrderCard({
     try {
       const res = await reprintReceipt(order.id)
       if (res.error) throw new Error(res.error)
+      if (res.rawbtUrl) {
+        sendToRawBT(res.rawbtUrl)
+      }
       toast.success('Struk berhasil dicetak', { id: toastId })
     } catch (err: any) {
       toast.error(err.message, { id: toastId })

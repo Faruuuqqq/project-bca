@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Loader2, QrCode, ShieldCheck, ArrowRight, ChevronLeft, Wifi, RefreshCw, AlertCircle, KeyRound, Delete } from 'lucide-react'
 import { useCartStore } from '@/store/cart'
 import { QRCodeSVG } from 'qrcode.react'
+import { sendToRawBT } from '@/lib/rawbt-client'
 import { toast } from 'sonner'
 import { playNotificationSound } from '@/lib/audio'
 import { checkPaymentStatus, confirmCashPayment, reprintReceipt } from '@/actions/payment'
@@ -72,7 +73,7 @@ export function QRISScreen({ orderId, qrContent, totalPrice, onCancel }: QRISScr
       try {
         const printRes = await reprintReceipt(orderId);
         if (printRes?.rawbtUrl) {
-          window.location.href = printRes.rawbtUrl;
+          sendToRawBT(printRes.rawbtUrl);
           await new Promise(resolve => setTimeout(resolve, 800));
         }
       } catch (e) { console.error('Auto print failed', e) }
