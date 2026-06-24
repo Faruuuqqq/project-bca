@@ -57,7 +57,7 @@ export default function PrivacyPolicy() {
             <p>Jika Anda memiliki pertanyaan tentang Kebijakan Privasi ini, silakan hubungi kami:</p>
             <ul className="list-none space-y-1 bg-gray-100 p-4 rounded-lg">
               <li><strong>Email:</strong> cs@ayamkalintang.com</li>
-              <li><strong>WhatsApp:</strong> +62 812-3456-7890</li>
+              <li><strong>WhatsApp:</strong> +62 895-6021-21652</li>
             </ul>
           </section>
         </div>

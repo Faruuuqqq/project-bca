@@ -80,7 +80,9 @@ export default function OrdersHistoryPage({
         statusFilter === 'all' ||
         (statusFilter === 'unpaid' && order.payment_status === 'unpaid') ||
         (statusFilter === 'completed' && order.order_status === 'completed' && order.payment_status === 'paid') ||
-        (statusFilter === 'pending' && order.order_status !== 'completed' && order.payment_status === 'paid')
+        (statusFilter === 'pending' &&
+          order.payment_status === 'paid' &&
+          !['completed', 'void'].includes(order.order_status))
 
       const matchesPayment =
         paymentFilter === 'all' || order.payment_method === paymentFilter

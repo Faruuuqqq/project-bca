@@ -128,7 +128,7 @@ export async function checkPaymentStatus(orderId: string) {
       })
 
       if (existingOrder?.payment_status !== 'paid') {
-        const printResult = await printOrderReceipt(orderId) as { success?: boolean; error?: string }
+        const printResult = await printOrderReceipt(orderId)
         if (!printResult?.success) {
           console.error('[Printer] Auto-print failed:', printResult?.error)
         }
@@ -302,7 +302,7 @@ export async function togglePriority(orderId: string, currentPriority: boolean) 
 }
 
 export async function reprintReceipt(orderId: string) {
-  const result = await printOrderReceipt(orderId) as { success?: boolean; error?: string }
+  const result = await printOrderReceipt(orderId)
 
   if (!result?.success) {
     return { error: result?.error || 'Gagal mencetak struk' }

@@ -57,7 +57,7 @@ export default function TermsAndConditions() {
             <ul className="list-none space-y-1 bg-gray-100 p-4 rounded-lg">
               <li><strong>Nama Bisnis:</strong> SOK Ayam Kalintang</li>
               <li><strong>Email:</strong> cs@ayamkalintang.com</li>
-              <li><strong>WhatsApp:</strong> + 62 895-6021-21652</li>
+              <li><strong>WhatsApp:</strong> +62 895-6021-21652</li>
               <li><strong>Alamat:</strong> Depan Polsek Jatinangor, Cikeruh, Kec. Jatinangor, Kabupaten Sumedang, Jawa Barat 45360</li>
             </ul>
           </section>

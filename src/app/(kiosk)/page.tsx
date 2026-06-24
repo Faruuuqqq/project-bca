@@ -60,10 +60,13 @@ export default function AttractScreen() {
           {/* VIGNETTE OVERLAY: Menghitamkan pinggir & bawah agar teks menonjol */}
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10" />
           <div className="absolute inset-0 bg-black/20 z-0" /> {/* Dimmer tambahan */}
-          <img
+          <Image
             src={slide.image}
             alt={slide.name}
-            className="w-full h-full object-cover"
+            fill
+            priority={index === 0}
+            unoptimized
+            className="object-cover"
           />
         </div>
       ))}
@@ -130,7 +133,7 @@ export default function AttractScreen() {
             <span className="hidden md:inline">•</span>
             <p>cs@ayamkalintang.com</p>
             <span className="hidden md:inline">•</span>
-            <p>WA: + 62 895-6021-21652</p>
+            <p>WA: +62 895-6021-21652</p>
           </div>
           <div className="text-[10px] text-white/50 flex items-center gap-2">
             <span>Secured by Midtrans</span>
