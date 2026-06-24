@@ -129,7 +129,9 @@ export async function createOrder(data: {
   if (data.paymentMethod === 'QRIS') {
     try {
       // Generate QRIS URL using Midtrans Core API
-      const qrContent = await generateMidtransQRIS(order.id, calculatedTotalPrice)
+      // TAHAP SEMENTARA: Gunakan QRIS statis BCA karena akun Midtrans belum di-ACC
+      // const qrContent = await generateMidtransQRIS(order.id, calculatedTotalPrice)
+      const qrContent = '/qrisSementara.jpeg'
       
       // Update order with Reference
       await supabase

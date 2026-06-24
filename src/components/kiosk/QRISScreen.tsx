@@ -4,26 +4,67 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Loader2, QrCode, ShieldCheck, ArrowRight, ChevronLeft, Wifi, RefreshCw, AlertCircle } from 'lucide-react'
+import { Loader2, QrCode, ShieldCheck, ArrowRight, ChevronLeft, Wifi, RefreshCw, AlertCircle, KeyRound, Delete } from 'lucide-react'
 import { useCartStore } from '@/store/cart'
 import { QRCodeSVG } from 'qrcode.react'
 import { toast } from 'sonner'
-import { checkPaymentStatus } from '@/actions/payment'
+import { playNotificationSound } from '@/lib/audio'
+import { checkPaymentStatus, confirmCashPayment } from '@/actions/payment'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import Image from 'next/image'
+
+function PinPad({
+  onKeyPress,
+  onDelete,
+  onClear,
+  disabled
+}: {
+  onKeyPress: (key: string) => void
+  onDelete: () => void
+  onClear: () => void
+  disabled?: boolean
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-3 md:gap-4 mt-6 w-full max-w-xs mx-auto">
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+        <Button
+          key={num}
+          variant="outline"
+          disabled={disabled}
+          className="h-14 text-lg font-black rounded-xl bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white"
+          onClick={() => onKeyPress(num.toString())}
+        >
+          {num}
+        </Button>
+      ))}
+      <Button variant="outline" disabled={disabled} className="h-14 font-bold text-red-400 rounded-xl bg-red-500/10 border-red-500/20 hover:bg-red-500/20" onClick={onClear}>C</Button>
+      <Button variant="outline" disabled={disabled} className="h-14 text-lg font-black rounded-xl bg-white/5 border-white/10 text-white hover:bg-white/10" onClick={() => onKeyPress('0')}>0</Button>
+      <Button variant="outline" disabled={disabled} className="h-14 flex justify-center items-center rounded-xl bg-white/5 border-white/10 text-white hover:bg-white/10" onClick={onDelete}><Delete size={20} /></Button>
+    </div>
+  )
+}
 
 interface QRISScreenProps {
   orderId: string
   qrContent: string
+  totalPrice?: number
   onCancel: () => void
 }
 
-export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
+export function QRISScreen({ orderId, qrContent, totalPrice, onCancel }: QRISScreenProps) {
   const router = useRouter()
   const supabase = createClient()
   const clearCart = useCartStore(state => state.clearCart)
   const [isLoaded, setIsLoaded] = useState(false)
   const [currentTime, setCurrentTime] = useState('')
   const [isChecking, setIsChecking] = useState(false)
-  const [nextCheckTime, setNextCheckTime] = useState(0) // FIX #2: Track cooldown
+  const [nextCheckTime, setNextCheckTime] = useState(0)
+  
+
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false)
+  const [pin, setPin] = useState('')
+  const [isConfirmingPin, setIsConfirmingPin] = useState(false)
 
   const handleSuccess = useCallback(() => {
     clearCart()
@@ -31,6 +72,8 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
   }, [clearCart, router, orderId])
 
   useEffect(() => {
+    playNotificationSound()
+
     const timer = setTimeout(() => setIsLoaded(true), 800)
     let isRedirecting = false
     
@@ -45,13 +88,12 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
     updateTime()
     const timeTimer = setInterval(updateTime, 1000)
 
-    // Polling dengan FIX #2: Rate limiting awareness
+    // Polling dengan Rate limiting awareness
     const pollingTimer = setInterval(async () => {
        if (isRedirecting) return
        try {
          const result = await checkPaymentStatus(orderId)
          
-         // FIX #2: Handle rate limiting response
          if (result.status === 'rate_limited') {
            console.log('⏱️ Rate limited, backing off polling')
            return
@@ -90,11 +132,9 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
     }
   }, [orderId, supabase, handleSuccess])
 
-  // FIX #2 & #4: Add cooldown to manual check button + better error handling
   const checkStatusManual = async () => {
     const now = Date.now()
     
-    // Enforce 2-second cooldown on client side
     if (now < nextCheckTime) {
       const waitMs = Math.ceil((nextCheckTime - now) / 1000)
       toast.warning(`Tunggu ${waitMs} detik sebelum cek lagi`)
@@ -105,35 +145,54 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
     try {
       const result = await checkPaymentStatus(orderId)
       
-      // FIX #2: Handle rate limiting on manual check
       if (result.status === 'rate_limited') {
         toast.warning(`Terlalu sering. Coba lagi dalam ${result.retryAfterMs ? Math.ceil(result.retryAfterMs / 1000) : 2}s`)
         setNextCheckTime(now + (result.retryAfterMs || 2000))
         return
       }
       
-      // FIX #4: Better error messaging for different scenarios
       if (result.status === 'paid') {
         toast.success("Pembayaran Berhasil Terdeteksi!")
         handleSuccess()
       } else if (result.message) {
-        // This is a retry failure with helpful message
         toast.info(result.message)
       } else {
-        // Payment still pending
         toast.info("Belum ada pembayaran lunas. Silakan scan & bayar terlebih dahulu.")
       }
     } catch (e) {
       toast.error("Gagal mengecek status ke bank. Coba lagi nanti.")
     } finally {
       setIsChecking(false)
-      // Set next allowed check time (2 seconds from now)
       setNextCheckTime(now + 2000)
+    }
+  }
+
+  const handleCashierConfirm = async () => {
+    if (pin.length < 4) {
+      toast.error('PIN minimal 4 digit')
+      return
+    }
+    setIsConfirmingPin(true)
+    try {
+      const result = await confirmCashPayment(orderId, pin)
+      if (result.error) {
+        toast.error('PIN Salah!')
+        setPin('')
+      } else {
+        toast.success('Pembayaran Dikonfirmasi Kasir!')
+        setIsPinModalOpen(false)
+        handleSuccess()
+      }
+    } catch (e) {
+      toast.error('Gagal mengonfirmasi pembayaran')
+    } finally {
+      setIsConfirmingPin(false)
     }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden animate-in fade-in duration-300">
+      
       {/* COMPACT UNIFIED HEADER */}
       <header className="sticky top-0 z-30 bg-brand-primary px-4 md:px-8 py-3 shrink-0 shadow-lg border-b border-white/10">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -142,7 +201,7 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
               <ChevronLeft size={20} />
             </Button>
             <div className="flex items-center gap-4">
-              <img src="/logo-kalintang.png" alt="Logo" className="h-12 md:h-16 w-auto object-contain drop-shadow-md" />
+              <Image src="/logo-kalintang.png" alt="Logo" width={160} height={64} priority className="h-12 md:h-16 w-auto object-contain drop-shadow-md" />
               <div className="flex items-center gap-1.5 text-blue-100/60 font-bold uppercase tracking-widest text-[8px]">
                 <Wifi size={10} className="text-brand-secondary animate-pulse" />
                 <span>Kiosk Terminal #01</span>
@@ -182,14 +241,14 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
               <div className="flex items-center gap-8 bg-white/80 backdrop-blur-sm p-8 rounded-[3rem] border-2 border-white shadow-xl shadow-blue-100/50">
                 <div className="flex flex-col items-center gap-3">
                   <div className="h-24 w-24 bg-white rounded-[1.8rem] shadow-md flex items-center justify-center overflow-hidden border border-zinc-50">
-                    <img src="https://play-lh.googleusercontent.com/ckrnc0pzN0oZgSaMQMnOYrICdBLwFTuI17MlTUp9ftyZPJ-m4K1pA3_Dz1B-1dCFVZbv" alt="myBCA" className="w-full h-full object-cover" />
+                    <Image src="/mybca.webp" alt="myBCA" width={96} height={96} className="w-full h-full object-cover" />
                   </div>
                   <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">myBCA</span>
                 </div>
                 <ArrowRight className="text-zinc-200" size={32} />
                 <div className="flex flex-col items-center gap-3">
                   <div className="h-24 w-24 bg-white rounded-[1.8rem] shadow-md flex items-center justify-center overflow-hidden border border-zinc-50">
-                    <img src="https://play-lh.googleusercontent.com/ggZzVVDWsTm7gSnVl8m3cNFgoeUN2r7dhAZdB8lz0d_s6ZcYOkvUQdbG3dPU5LHZnWvc" alt="BCA Mobile" className="w-full h-full object-cover" />
+                    <Image src="/bcamobile.webp" alt="BCA Mobile" width={96} height={96} className="w-full h-full object-cover" />
                   </div>
                   <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">BCA Mobile</span>
                 </div>
@@ -207,10 +266,17 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
                   Pindai QRIS
                 </div>
                 
-                <div className="bg-white flex items-center justify-center mt-2 aspect-square">
+                {totalPrice && (
+                  <div className="mt-4 mb-2 text-center w-full">
+                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Pembayaran</p>
+                    <p className="text-2xl font-black text-[#3d2b1f] tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(totalPrice)}</p>
+                  </div>
+                )}
+
+                <div className="bg-white flex items-center justify-center aspect-square overflow-hidden rounded-xl mt-1">
                   {qrContent ? (
-                    qrContent.startsWith('http') ? (
-                      <img src={qrContent} alt="QRIS" className="w-[320px] h-[320px] md:w-[400px] md:h-[400px] object-contain" />
+                    qrContent.startsWith('http') || qrContent.startsWith('/') ? (
+                      <img src={qrContent} alt="QRIS" className="w-[320px] h-[320px] md:w-[400px] md:h-[400px] object-cover scale-[1.15]" />
                     ) : (
                       <QRCodeSVG 
                         value={qrContent} 
@@ -261,15 +327,45 @@ export function QRISScreen({ orderId, qrContent, onCancel }: QRISScreenProps) {
         </div>
 
         {/* Right: Check Status Button */}
-        <Button 
-          className="w-full md:w-auto h-12 md:h-14 px-8 bg-brand-primary text-white font-black uppercase tracking-widest text-[10px] md:text-xs rounded-2xl shadow-lg shadow-brand-primary/20 hover:bg-blue-700 active:scale-95 transition-all group"
-          onClick={checkStatusManual}
-          disabled={isChecking}
-        >
-          {isChecking ? <Loader2 className="animate-spin mr-2 h-4 w-4 md:h-5 md:w-5" /> : <RefreshCw className="mr-2 h-4 w-4 md:h-5 md:w-5 group-hover:rotate-180 transition-transform duration-500" />}
-          Cek Status Pembayaran
-        </Button>
+        <div className="flex gap-2 w-full md:w-auto">
+          <Button 
+            variant="outline"
+            className="w-full md:w-auto h-12 md:h-14 px-4 border-brand-primary text-brand-primary font-black uppercase tracking-widest text-[10px] md:text-xs rounded-2xl hover:bg-brand-primary/10 transition-all bg-white"
+            onClick={() => setIsPinModalOpen(true)}
+          >
+            <KeyRound className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+            Kasir
+          </Button>
+          <Button 
+            className="w-full md:w-auto h-12 md:h-14 px-8 bg-brand-primary text-white font-black uppercase tracking-widest text-[10px] md:text-xs rounded-2xl shadow-lg shadow-brand-primary/20 hover:bg-blue-700 active:scale-95 transition-all group"
+            onClick={checkStatusManual}
+            disabled={isChecking}
+          >
+            {isChecking ? <Loader2 className="animate-spin mr-2 h-4 w-4 md:h-5 md:w-5" /> : <RefreshCw className="mr-2 h-4 w-4 md:h-5 md:w-5 group-hover:rotate-180 transition-transform duration-500" />}
+            Cek Status
+          </Button>
+        </div>
       </footer>
+
+      <Dialog open={isPinModalOpen} onOpenChange={setIsPinModalOpen}>
+        <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] p-8 text-center bg-[#1a1a2e] text-white border-none shadow-2xl outline-none">
+          <DialogHeader>
+            <div className="mx-auto h-16 w-16 rounded-full bg-brand-primary/20 flex items-center justify-center text-brand-secondary mb-4">
+              <KeyRound size={32} />
+            </div>
+            <DialogTitle className="text-2xl font-black uppercase tracking-tight text-white mb-2">Otoritas Kasir</DialogTitle>
+            <p className="text-sm text-zinc-400 font-medium">Masukkan PIN rahasia untuk mengonfirmasi pembayaran QRIS statis.</p>
+          </DialogHeader>
+
+          <div className="mt-6">
+            <Input readOnly type="password" inputMode="numeric" maxLength={4} placeholder="••••" className="h-20 text-center text-5xl tracking-[0.5em] rounded-2xl border-2 border-white/10 bg-black/40 font-black text-white focus:border-brand-primary focus:ring-0 mx-auto w-full max-w-xs placeholder:text-zinc-700" value={pin} onChange={(e) => setPin(e.target.value)} />
+            <PinPad disabled={isConfirmingPin} onKeyPress={(key) => { if (pin.length < 4) setPin(p => p + key) }} onDelete={() => setPin(p => p.slice(0, -1))} onClear={() => setPin('')} />
+            <Button className="w-full h-16 mt-8 rounded-2xl bg-brand-primary text-white text-xl font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-[0_10px_40px_rgba(6,103,172,0.4)] disabled:bg-white/10 disabled:text-white/30" onClick={handleCashierConfirm} disabled={isConfirmingPin || pin.length < 4}>
+              {isConfirmingPin ? <Loader2 className="animate-spin h-6 w-6 text-white" /> : 'Konfirmasi'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

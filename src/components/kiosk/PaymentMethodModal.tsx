@@ -16,7 +16,10 @@ interface PaymentMethodModalProps {
   onSelect: (method: 'QRIS' | 'CASH') => void
 }
 
+import { useState, useEffect } from 'react'
 export function PaymentMethodModal({ open, onOpenChange, onSelect }: PaymentMethodModalProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  useEffect(() => { if (!open) setIsSubmitting(false) }, [open])
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className="max-w-[90vw] sm:max-w-[480px] md:max-w-[560px] rounded-[2.5rem] md:rounded-[3rem] bg-white border-none shadow-2xl p-0 overflow-hidden outline-none">
@@ -45,7 +48,8 @@ export function PaymentMethodModal({ open, onOpenChange, onSelect }: PaymentMeth
               <Button
                 variant="outline"
                 className="w-full h-36 md:h-44 flex flex-col items-center justify-center gap-2 rounded-[2rem] md:rounded-[2.5rem] border-4 border-brand-primary/80 bg-brand-primary/[0.03] hover:bg-brand-primary/[0.08] hover:border-brand-primary transition-all duration-300 relative overflow-hidden touch-manipulation shadow-sm hover:shadow-md"
-                onClick={() => onSelect('QRIS')}
+                onClick={() => { setIsSubmitting(true); onSelect('QRIS'); }}
+                disabled={isSubmitting}
               >
                 <div className="absolute right-[-10px] bottom-[-10px] text-brand-primary opacity-5 group-hover:opacity-10 transition-opacity">
                   <CheckCircle2 size={160} className="md:w-48 md:h-48" />
@@ -65,7 +69,8 @@ export function PaymentMethodModal({ open, onOpenChange, onSelect }: PaymentMeth
               <Button
                 variant="outline"
                 className="w-full h-32 md:h-36 flex flex-col items-center justify-center gap-1.5 md:gap-2 rounded-[2rem] md:rounded-[2.5rem] border-[3px] border-zinc-100 bg-white hover:border-zinc-200 hover:bg-zinc-50 transition-all duration-300 touch-manipulation"
-                onClick={() => onSelect('CASH')}
+                onClick={() => { setIsSubmitting(true); onSelect('CASH'); }}
+                disabled={isSubmitting}
               >
                 <Banknote size={36} className="text-zinc-400 mb-0.5 md:mb-1 md:w-10 md:h-10" />
                 <div className="text-center px-4 md:px-8">

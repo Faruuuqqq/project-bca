@@ -21,18 +21,17 @@ if (!serverKey || !clientKey) {
   if (!serverKey) missingVars.push('MIDTRANS_SERVER_KEY')
   if (!clientKey) missingVars.push('NEXT_PUBLIC_MIDTRANS_CLIENT_KEY')
   
-  throw new Error(
-    `CRITICAL: Midtrans API keys not configured in environment variables.\n` +
+  console.warn(
+    `WARNING: Midtrans API keys not configured in environment variables.\n` +
     `Missing: ${missingVars.join(', ')}\n` +
-    `Please set these variables in .env or Vercel environment settings.\n` +
-    `See: https://midtrans.com/developers`
+    `Midtrans features will be disabled temporarily.`
   )
 }
 
 export const midtransCore = new midtransClient.CoreApi({
   isProduction: isProduction,
-  serverKey: serverKey,
-  clientKey: clientKey,
+  serverKey: serverKey || 'dummy-server-key',
+  clientKey: clientKey || 'dummy-client-key',
 })
 
 /**

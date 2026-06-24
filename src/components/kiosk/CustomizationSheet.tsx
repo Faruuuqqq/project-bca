@@ -48,6 +48,8 @@ interface CustomizationSheetProps {
 export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSheetProps) {
   const addItem = useCartStore((state) => state.addItem)
   const [quantity, setQuantity] = useState(1)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  useEffect(() => { if (!open) setIsSubmitting(false) }, [open])
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>({})
 
   // Reset state when menu changes using key-like pattern with ref
@@ -103,6 +105,7 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
   }
 
   const handleAddToCart = () => {
+    setIsSubmitting(true)
     const optionsForCart: { optionId: string; optionName: string; valueId: string; valueLabel: string; extraPrice: number }[] = []
     
     for (const [optionId, valueIds] of Object.entries(selectedOptions)) {
@@ -267,7 +270,7 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
           
           <Button 
             className="w-full h-16 rounded-[1.5rem] bg-brand-primary text-white text-lg font-black hover:bg-blue-900 disabled:opacity-50 shadow-xl shadow-blue-100 active:scale-[0.98] transition-all"
-            disabled={isAddDisabled()}
+            disabled={isAddDisabled() || isSubmitting}
             onClick={handleAddToCart}
           >
             TAMBAHKAN KE KERANJANG

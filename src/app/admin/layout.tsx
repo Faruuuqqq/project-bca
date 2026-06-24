@@ -36,6 +36,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet'
+import { StoreStatusSwitch } from '@/components/admin/StoreStatusSwitch'
 
 type NavItem = {
   name: string
@@ -45,7 +46,7 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { name: 'Ringkasan', href: '/admin/dashboard', icon: LayoutDashboard },
-  { name: 'Antrean Dapur', href: '/admin/orders', icon: ClipboardList },
+  { name: 'Pesanan Aktif', href: '/admin/orders', icon: ClipboardList },
   { name: 'Katalog Menu', href: '/admin/menus', icon: UtensilsCrossed },
   { name: 'Stok Barang', href: '/admin/inventory', icon: Package },
 

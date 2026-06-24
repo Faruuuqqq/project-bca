@@ -46,6 +46,7 @@ import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { cn, formatRupiah } from '@/lib/utils'
 import { adminTokens } from '@/components/admin/_tokens'
+import Image from 'next/image'
 
 interface MenuItem {
   id: string

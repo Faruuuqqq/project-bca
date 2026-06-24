@@ -10,6 +10,7 @@ import { Banknote, Clock, ArrowRight, KeyRound, Loader2, AlertTriangle, Lock, Sh
 import { useCartStore } from '@/store/cart'
 import { confirmCashPayment, verifyRecoveryCode } from '@/actions/payment'
 import { toast } from 'sonner'
+import { playNotificationSound } from '@/lib/audio'
 
 interface CashWaitScreenProps {
   orderId: string
@@ -75,6 +76,7 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
   const supabase = createClient()
   const clearCart = useCartStore(state => state.clearCart)
   
+  
   const [pin, setPin] = useState('')
   const [isConfirming, setIsConfirming] = useState(false)
   const [isVerifyingRecovery, setIsVerifyingVercovery] = useState(false)
@@ -84,6 +86,11 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
   const [isLocked, setIsLocked] = useState(false)
   const [backupCode, setBackupCode] = useState('')
   const pinInputRef = useRef<HTMLInputElement>(null)
+
+  // Play notification sound when screen mounts (order is placed)
+  useEffect(() => {
+    playNotificationSound()
+  }, [])
 
   const handleSuccess = useCallback(() => {
     clearCart()
@@ -188,6 +195,7 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col md:flex-row bg-[#EEF6FF] overflow-hidden animate-in fade-in duration-300">
+      
       
       {/* ─── LEFT SIDE: CUSTOMER INFO ─── */}
       <div className="flex-1 flex flex-col relative bg-white shadow-2xl z-10 rounded-b-[2rem] md:rounded-r-[3rem] md:rounded-bl-none overflow-hidden border-r border-blue-50">

@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCartStore } from '@/store/cart'
 import { Button } from '@/components/ui/button'
 import { Utensils, ShoppingBag, Lock, Delete, X } from 'lucide-react'
 import { verifyAdminPin } from '@/actions/auth'
+import Image from 'next/image'
 
 const PIN_LENGTH = 4
 
@@ -24,6 +25,11 @@ export default function OrderTypePage() {
     setOrderType(type)
     router.push('/menu')
   }
+
+  // Prefetch menu page for instant navigation
+  useEffect(() => {
+    router.prefetch('/menu')
+  }, [router])
 
   const handlePinBackspace = useCallback(() => {
     setError(false)
@@ -78,9 +84,13 @@ export default function OrderTypePage() {
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-white p-4 text-center overflow-hidden animate-in fade-in duration-700">
       {/* Logo */}
       <div className="mb-4 md:mb-8 shrink-0 flex flex-col items-center">
-        <img
+        <Image
           src="/logo-kalintang.png"
           alt="Ayam Kalintang"
+          width={256}
+          height={200}
+          priority
+          unoptimized
           className="h-32 md:h-[200px] w-auto object-contain drop-shadow-xl"
         />
         <div className="mt-2 md:mt-3 flex flex-col items-center opacity-40">

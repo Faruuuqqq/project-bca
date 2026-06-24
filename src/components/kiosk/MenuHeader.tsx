@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ChevronLeft, Wifi, WifiOff } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export function MenuHeader() {
   const orderType = useCartStore((state) => state.orderType)
@@ -53,9 +54,12 @@ export function MenuHeader() {
           </Link>
           
           <div className="flex items-center gap-5">
-            <img 
+            <Image 
               src="/logo-kalintang.png" 
               alt="Logo" 
+              width={160}
+              height={72}
+              priority
               className="h-14 md:h-18 w-auto object-contain drop-shadow-md py-1" 
             />
             
