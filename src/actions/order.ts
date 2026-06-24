@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { CartItem } from '@/store/cart'
 import { generateMidtransQRIS } from '@/lib/midtrans'
 
@@ -9,7 +9,7 @@ export async function createOrder(data: {
   orderType: 'dine-in' | 'take-away'
   paymentMethod: 'QRIS' | 'CASH'
 }) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   
   // 1. SECURITY VALIDATION: Empty or negative quantity checks
   if (!data.items || data.items.length === 0) {

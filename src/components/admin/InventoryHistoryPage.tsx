@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { HistoryFilters } from './HistoryFilters'
-import { ArrowUpRight, ArrowDownLeft, ChevronLeft } from 'lucide-react'
+import { ArrowUpRight, ArrowDownLeft, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn, formatDateTime } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
@@ -28,9 +28,18 @@ interface MenuOption {
 interface InventoryHistoryPageProps {
   initialHistory: HistoryItem[]
   menus: MenuOption[]
+  currentPage: number
+  totalPages: number
+  totalItems: number
 }
 
-export function InventoryHistoryPage({ initialHistory, menus }: InventoryHistoryPageProps) {
+export function InventoryHistoryPage({ 
+  initialHistory, 
+  menus,
+  currentPage,
+  totalPages,
+  totalItems 
+}: InventoryHistoryPageProps) {
   const router = useRouter()
   const [filters, setFilters] = useState({
     searchTerm: '',
@@ -39,8 +48,6 @@ export function InventoryHistoryPage({ initialHistory, menus }: InventoryHistory
     dateFrom: null as string | null,
     dateTo: null as string | null,
   })
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 20
 
   // Filter logic
   const filteredHistory = useMemo(() => {
@@ -76,15 +83,18 @@ export function InventoryHistoryPage({ initialHistory, menus }: InventoryHistory
     })
   }, [initialHistory, filters])
 
-  // Pagination
-  const totalPages = Math.ceil(filteredHistory.length / itemsPerPage)
-  const startIdx = (currentPage - 1) * itemsPerPage
-  const paginatedHistory = filteredHistory.slice(startIdx, startIdx + itemsPerPage)
-
-  // Reset to page 1 when filters change
   const handleFilterChange = (newFilters: typeof filters) => {
     setFilters(newFilters)
-    setCurrentPage(1)
+    // When filters change, reset to page 1 to ensure we see results
+    if (currentPage !== 1) {
+      handlePageChange(1)
+    }
+  }
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams()
+    params.set('page', newPage.toString())
+    router.push(`/admin/inventory/history?${params.toString()}`)
   }
 
   return (
@@ -112,9 +122,9 @@ export function InventoryHistoryPage({ initialHistory, menus }: InventoryHistory
 
       {/* HISTORY LIST */}
       <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
-        {paginatedHistory.length > 0 ? (
+        {filteredHistory.length > 0 ? (
           <div className="divide-y divide-border">
-            {paginatedHistory.map((item) => (
+            {filteredHistory.map((item) => (
               <div key={item.id} className="flex items-center gap-4 px-5 py-4 hover:bg-muted/30 transition-colors">
                 {/* Icon */}
                 <div
@@ -165,48 +175,37 @@ export function InventoryHistoryPage({ initialHistory, menus }: InventoryHistory
       </div>
 
       {/* PAGINATION */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="text-sm text-muted-foreground">
+          Menampilkan {(currentPage - 1) * 20 + 1}-{Math.min(currentPage * 20, totalItems)} dari {totalItems} aktivitas
+        </div>
+
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="h-9 px-3 rounded-lg border border-border"
+            aria-label="Halaman sebelumnya"
           >
-            Sebelumnya
+            <ChevronLeft size={16} aria-hidden="true" />
           </Button>
 
-          <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant={currentPage === page ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setCurrentPage(page)}
-                className={cn(
-                  'h-9 w-9 p-0 rounded-lg text-xs font-medium',
-                  currentPage === page
-                    ? 'bg-brand-primary text-white'
-                    : 'border border-border hover:bg-muted'
-                )}
-              >
-                {page}
-              </Button>
-            ))}
+          <div className="px-3 py-1.5 bg-muted rounded-lg text-sm font-semibold">
+            {currentPage} / {totalPages}
           </div>
 
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-            className="h-9 px-3 rounded-lg border border-border"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+            aria-label="Halaman berikutnya"
           >
-            Berikutnya
+            <ChevronRight size={16} aria-hidden="true" />
           </Button>
         </div>
-      )}
+      </div>
 
       {/* STATISTICS */}
       {filteredHistory.length > 0 && (

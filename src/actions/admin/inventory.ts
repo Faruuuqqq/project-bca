@@ -1,13 +1,14 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 /**
  * Adjust stock for a menu item (+ or -)
  */
 export async function adjustStock(menuId: string, amount: number, reason: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data: menu, error: fetchError } = await supabase
     .from('menus')
@@ -17,7 +18,8 @@ export async function adjustStock(menuId: string, amount: number, reason: string
 
   if (fetchError) throw new Error(fetchError.message)
 
-  const newStock = (menu.current_stock || 0) + amount
+  // FIX BUG: Prevent negative stock
+  const newStock = Math.max(0, (menu.current_stock || 0) + amount)
 
   // Parallelize: update stock + insert log (independent operations)
   const [{ error: updateError }, { error: logError }] = await Promise.all([
@@ -45,16 +47,16 @@ export async function adjustStock(menuId: string, amount: number, reason: string
   return { success: true }
 }
 
-export async function getInventoryHistory() {
+export async function getInventoryHistory(limit: number = 20, offset: number = 0) {
   const supabase = await createClient()
-  const { data, error } = await supabase
+  const { data, error, count } = await supabase
     .from('inventory_movements')
-    .select('id, menu_id, movement_type, amount, reason, created_at, menus!inner(name)')
+    .select('id, menu_id, movement_type, amount, reason, created_at, menus!inner(name)', { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(50)
+    .range(offset, offset + limit - 1)
 
   if (error) throw new Error(error.message)
-  return data
+  return { history: data, total: count }
 }
 
 /**
@@ -100,7 +102,7 @@ export async function createStockAlert(
   currentStock: number,
   threshold: number
 ) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { error } = await supabase.from('stock_alerts').insert({
     menu_id: menuId,
     stock_level: currentStock,
@@ -112,7 +114,7 @@ export async function createStockAlert(
 }
 
 export async function dismissStockAlert(alertId: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   
   const { error } = await supabase
     .from('stock_alerts')
@@ -128,7 +130,7 @@ export async function dismissStockAlert(alertId: string) {
 }
 
 export async function updateStockThreshold(menuId: string, threshold: number) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   
   if (threshold < 0) throw new Error('Threshold tidak boleh negatif')
   
@@ -147,7 +149,7 @@ export async function updateStockThreshold(menuId: string, threshold: number) {
  * Called after every stock adjustment.
  */
 export async function checkAndTriggerStockAlerts(menuId: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   
   try {
     const { data: menu, error: fetchError } = await supabase
@@ -193,7 +195,7 @@ export async function checkAndTriggerStockAlerts(menuId: string) {
  * daily_stock = 0 means "no daily reset" for this item.
  */
 export async function updateDailyStock(menuId: string, dailyStock: number) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { error } = await supabase
     .from('menus')
@@ -211,7 +213,7 @@ export async function updateDailyStock(menuId: string, dailyStock: number) {
  * Logs each reset as an inventory_movement for audit trail.
  */
 export async function resetDailyStock() {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data: menus, error: fetchError } = await supabase
     .from('menus')

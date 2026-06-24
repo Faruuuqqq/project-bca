@@ -1,12 +1,12 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 // --- IMAGE UPLOAD ---
 
 export async function uploadMenuImage(formData: FormData): Promise<string> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const file = formData.get('file') as File
 
   if (!file || file.size === 0) {
@@ -47,7 +47,7 @@ export async function uploadMenuImage(formData: FormData): Promise<string> {
 }
 
 export async function deleteMenuImage(imageUrl: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   // Extract file path from URL
   const match = imageUrl.match(/menu-images\/(.+)$/)
@@ -60,9 +60,16 @@ export async function deleteMenuImage(imageUrl: string) {
 // --- CATEGORIES ---
 
 export async function createCategory(formData: FormData) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const name = formData.get('name') as string
-  const sort_order = parseInt(formData.get('sort_order') as string || '0')
+  
+  const { data: maxCat } = await supabase
+    .from('categories')
+    .select('sort_order')
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .single()
+  const sort_order = maxCat ? (maxCat.sort_order + 1) : 1
 
   const { error } = await supabase
     .from('categories')
@@ -75,13 +82,12 @@ export async function createCategory(formData: FormData) {
 }
 
 export async function updateCategory(id: string, formData: FormData) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const name = formData.get('name') as string
-  const sort_order = parseInt(formData.get('sort_order') as string || '0')
 
   const { error } = await supabase
     .from('categories')
-    .update({ name, sort_order })
+    .update({ name })
     .eq('id', id)
 
   if (error) throw new Error(error.message)
@@ -90,8 +96,21 @@ export async function updateCategory(id: string, formData: FormData) {
   return { success: true }
 }
 
+export async function swapCategoryOrder(id1: string, order1: number, id2: string, order2: number) {
+  const supabase = createAdminClient()
+  
+  const { error: error1 } = await supabase.from('categories').update({ sort_order: order2 }).eq('id', id1)
+  if (error1) throw new Error(error1.message)
+
+  const { error: error2 } = await supabase.from('categories').update({ sort_order: order1 }).eq('id', id2)
+  if (error2) throw new Error(error2.message)
+  
+  revalidatePath('/admin/menus')
+  return { success: true }
+}
+
 export async function deleteCategory(id: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { error } = await supabase
     .from('categories')
     .delete()
@@ -106,7 +125,9 @@ export async function deleteCategory(id: string) {
 // --- MENUS ---
 
 export async function createMenu(formData: FormData) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
+
+  const imageUrl = formData.get('image_url') as string
 
   const data = {
     name: formData.get('name') as string,
@@ -114,7 +135,7 @@ export async function createMenu(formData: FormData) {
     price: parseFloat(formData.get('price') as string),
     cost_price: parseFloat((formData.get('cost_price') as string) || '0'),
     description: formData.get('description') as string,
-    image_url: formData.get('image_url') as string,
+    image_url: imageUrl || null, // FIX BUG: Empty string instead of null
     is_sold_out: formData.get('is_sold_out') === 'on',
   }
 
@@ -129,7 +150,9 @@ export async function createMenu(formData: FormData) {
 }
 
 export async function updateMenu(id: string, formData: FormData) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
+
+  const imageUrl = formData.get('image_url') as string
 
   const data = {
     name: formData.get('name') as string,
@@ -137,7 +160,7 @@ export async function updateMenu(id: string, formData: FormData) {
     price: parseFloat(formData.get('price') as string),
     cost_price: parseFloat((formData.get('cost_price') as string) || '0'),
     description: formData.get('description') as string,
-    image_url: formData.get('image_url') as string,
+    image_url: imageUrl || null, // FIX BUG: Empty string instead of null
     is_sold_out: formData.get('is_sold_out') === 'on',
   }
 
@@ -153,7 +176,7 @@ export async function updateMenu(id: string, formData: FormData) {
 }
 
 export async function deleteMenu(id: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { error } = await supabase
     .from('menus')
     .delete()
@@ -166,7 +189,7 @@ export async function deleteMenu(id: string) {
 }
 
 export async function toggleSoldOut(menuId: string, value: boolean) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
    
    const { error } = await supabase
      .from('menus')
@@ -185,7 +208,7 @@ export async function toggleSoldOut(menuId: string, value: boolean) {
  * Gets current state, toggles it, and updates
  */
 export async function toggleMenuSoldOut(menuId: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   
   // Get current state
   const { data: menu, error: fetchError } = await supabase

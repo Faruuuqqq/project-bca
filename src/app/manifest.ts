@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Self-Order Kiosk for Ayam Kalintang - Bakti BCA',
     start_url: '/',
     display: 'standalone',
-    orientation: 'portrait',
+    orientation: 'any',
     background_color: '#FFFFFF',
     theme_color: '#0667AC',
     icons: [
