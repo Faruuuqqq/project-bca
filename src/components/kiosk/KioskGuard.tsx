@@ -50,8 +50,9 @@ export function KioskGuard() {
           filter: "config_key=eq.store_status"
         },
         (payload) => {
-          if (payload.new && payload.new.config_value) {
-            setStoreStatus(payload.new.config_value as 'open' | 'closed')
+          const newData = payload.new as { config_value?: string }
+          if (newData && newData.config_value) {
+            setStoreStatus(newData.config_value as 'open' | 'closed')
           }
         }
       )
