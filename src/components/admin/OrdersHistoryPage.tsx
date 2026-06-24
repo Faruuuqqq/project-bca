@@ -127,6 +127,12 @@ export default function OrdersHistoryPage({
     return { label: 'Bawa Pulang', color: 'bg-cyan-100 text-cyan-700' }
   }
 
+  const qrisOrders = filteredOrders.filter(o => o.payment_method === 'QRIS' && o.payment_status === 'paid')
+  const cashOrders = filteredOrders.filter(o => o.payment_method === 'CASH' && o.payment_status === 'paid')
+  
+  const qrisTotal = qrisOrders.reduce((sum, order) => sum + (order.total_price || 0), 0)
+  const cashTotal = cashOrders.reduce((sum, order) => sum + (order.total_price || 0), 0)
+
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-500">
       {/* HEADER */}
@@ -150,11 +156,11 @@ export default function OrdersHistoryPage({
           
           {/* Cash/QRIS Summary for Current Filter */}
           <div className="flex gap-3 mt-3">
-            <Badge variant="outline" className="text-indigo-700 bg-indigo-50/50 border-indigo-200">
-              QRIS: {filteredOrders.filter(o => o.payment_method === 'QRIS' && o.payment_status === 'paid').length} transaksi
+            <Badge variant="outline" className="text-indigo-700 bg-indigo-50/50 border-indigo-200 py-1 px-3">
+              QRIS: {qrisOrders.length}x (Rp {new Intl.NumberFormat('id-ID').format(qrisTotal)})
             </Badge>
-            <Badge variant="outline" className="text-orange-700 bg-orange-50/50 border-orange-200">
-              CASH: {filteredOrders.filter(o => o.payment_method === 'CASH' && o.payment_status === 'paid').length} transaksi
+            <Badge variant="outline" className="text-orange-700 bg-orange-50/50 border-orange-200 py-1 px-3">
+              CASH: {cashOrders.length}x (Rp {new Intl.NumberFormat('id-ID').format(cashTotal)})
             </Badge>
           </div>
         </div>
