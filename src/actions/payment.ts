@@ -217,10 +217,12 @@ export async function confirmCashPayment(orderId: string, pin: string) {
 
   if (error) throw new Error('Gagal mengonfirmasi pembayaran')
 
+  let rawbtUrl = null;
   if (existingOrder?.payment_status !== 'paid') {
-    printOrderReceipt(orderId).catch((printError) => {
-      console.error('[Printer] Cash payment auto-print failed:', printError)
-    })
+    const printResult = await printOrderReceipt(orderId) as any;
+    if (printResult?.success && printResult?.rawbtUrl) {
+      rawbtUrl = printResult.rawbtUrl;
+    }
   }
 
   // Deduct stock for paid order (idempotent)
@@ -228,7 +230,7 @@ export async function confirmCashPayment(orderId: string, pin: string) {
     console.error(`[Stock] Deduction failed for order ${orderId}:`, e)
   )
 
-  return { success: true, order: data }
+  return { success: true, order: data, rawbtUrl }
 }
 
 /**
@@ -302,13 +304,13 @@ export async function togglePriority(orderId: string, currentPriority: boolean) 
 }
 
 export async function reprintReceipt(orderId: string) {
-  const result = await printOrderReceipt(orderId)
+  const result = await printOrderReceipt(orderId) as any
 
   if (!result?.success) {
     return { error: result?.error || 'Gagal mencetak struk' }
   }
 
-  return { success: true }
+  return { success: true, rawbtUrl: result?.rawbtUrl }
 }
 
 export async function voidOrder(orderId: string, pin: string) {

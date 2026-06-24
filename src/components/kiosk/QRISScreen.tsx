@@ -9,7 +9,7 @@ import { useCartStore } from '@/store/cart'
 import { QRCodeSVG } from 'qrcode.react'
 import { toast } from 'sonner'
 import { playNotificationSound } from '@/lib/audio'
-import { checkPaymentStatus, confirmCashPayment } from '@/actions/payment'
+import { checkPaymentStatus, confirmCashPayment, reprintReceipt } from '@/actions/payment'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import Image from 'next/image'
@@ -66,8 +66,17 @@ export function QRISScreen({ orderId, qrContent, totalPrice, onCancel }: QRISScr
   const [pin, setPin] = useState('')
   const [isConfirmingPin, setIsConfirmingPin] = useState(false)
 
-  const handleSuccess = useCallback(() => {
+  const handleSuccess = useCallback(async (shouldPrint = true) => {
     clearCart()
+    if (shouldPrint) {
+      try {
+        const printRes = await reprintReceipt(orderId);
+        if (printRes?.rawbtUrl) {
+          window.location.href = printRes.rawbtUrl;
+          await new Promise(resolve => setTimeout(resolve, 800));
+        }
+      } catch (e) { console.error('Auto print failed', e) }
+    }
     router.push(`/success?id=${orderId}`)
   }, [clearCart, router, orderId])
 
@@ -102,7 +111,7 @@ export function QRISScreen({ orderId, qrContent, totalPrice, onCancel }: QRISScr
          if (result.status === 'paid' && !isRedirecting) {
             isRedirecting = true
             clearInterval(pollingTimer)
-            handleSuccess()
+            handleSuccess(true)
           }
        } catch (e) {
          console.error('Polling error:', e)
@@ -118,7 +127,7 @@ export function QRISScreen({ orderId, qrContent, totalPrice, onCancel }: QRISScr
           if (payload.new.payment_status === 'paid' && !isRedirecting) {
             isRedirecting = true
             clearInterval(pollingTimer)
-            handleSuccess()
+            handleSuccess(true)
           }
         }
       )
@@ -153,7 +162,7 @@ export function QRISScreen({ orderId, qrContent, totalPrice, onCancel }: QRISScr
       
       if (result.status === 'paid') {
         toast.success("Pembayaran Berhasil Terdeteksi!")
-        handleSuccess()
+        handleSuccess(true)
       } else if (result.message) {
         toast.info(result.message)
       } else {

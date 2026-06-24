@@ -33,15 +33,7 @@ export async function printOrderReceipt(orderId: string) {
       return { success: false, error: 'Order not found' }
     }
 
-    const printerIp = process.env.PRINTER_IP
-    const printerPort = parseInt(process.env.PRINTER_PORT || '9100')
-
-    // Jika PRINTER_IP tidak di-set di .env, fallback ke Console Simulator
-    if (!printerIp || printerIp === '127.0.0.1') {
-      console.log(`[SIMULATOR PRINTER] Mengarahkan cetakan ke log karena PRINTER_IP belum dikonfigurasi.`)
-      console.log(`Kitchen Copy & Customer Copy untuk Antrean #${order.queue_number} tercetak!`)
-      return { success: true }
-    }
+    // Bypassing IP check for RawBT Mobile Integration
 
     // Bangun string cetakan (ESC/POS)
     let receiptData = INIT
@@ -99,35 +91,12 @@ export async function printOrderReceipt(orderId: string) {
     receiptData += "Mohon tunggu nomor antrean Anda\ndipanggil oleh kasir.\n"
     receiptData += "\n\n\n\n\n" + CUT_PAPER // Potong kertas konsumen
 
-    // Kirim data mentah ke printer fisik via TCP Socket
-    return new Promise<{ success: boolean; error?: string }>((resolve) => {
-      const client = new net.Socket()
-      
-      // Timeout 5 detik jika printer mati/kertas habis
-      client.setTimeout(5000)
-
-      client.connect(printerPort, printerIp, () => {
-        console.log(`[PRINTER] Connected to ${printerIp}:${printerPort}`)
-        // Convert string to Buffer using standard local encoding (latin1/ascii is typical for ESC/POS)
-        client.write(Buffer.from(receiptData, 'latin1'), () => {
-          console.log(`[PRINTER] Print job sent successfully for Order #${order.queue_number}`)
-          client.destroy()
-          resolve({ success: true })
-        })
-      })
-
-      client.on('error', (err) => {
-        console.error(`[PRINTER] Connection Error:`, err.message)
-        client.destroy()
-        resolve({ success: false, error: 'Koneksi ke printer gagal. Pastikan printer menyala dan IP benar.' })
-      })
-
-      client.on('timeout', () => {
-        console.error(`[PRINTER] Connection Timeout`)
-        client.destroy()
-        resolve({ success: false, error: 'Printer tidak merespons (Timeout)' })
-      })
-    })
+// Generate RawBT Intent URL for Android Client
+    const buffer = Buffer.from(receiptData, 'latin1')
+    const base64Data = buffer.toString('base64')
+    const rawbtUrl = 'intent:base64,' + base64Data + '#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;'
+    
+    return { success: true, rawbtUrl }
 
   } catch (err) {
     console.error('Print failed:', err)
