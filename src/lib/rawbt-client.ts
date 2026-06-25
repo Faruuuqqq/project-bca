@@ -1,3 +1,5 @@
+import { toast } from 'sonner';
+
 export async function sendToRawBT(rawbtUrl: string): Promise<boolean> {
   try {
     if (!rawbtUrl.includes('base64,')) {
@@ -12,27 +14,44 @@ export async function sendToRawBT(rawbtUrl: string): Promise<boolean> {
       bytes[i] = binaryString.charCodeAt(i);
     }
     
-    // Try to send to RawBT local web server (completely silent, no app switch)
-    // Chrome allows http://127.0.0.1 requests from https:// contexts (Secure Contexts)
-    const response = await fetch('http://127.0.0.1:40228/', {
-      method: 'POST',
-      body: bytes,
-      headers: {
-        'Content-Type': 'application/octet-stream'
-      }
-    });
-    
-    if (response.ok) {
-      return true;
-    } else {
-      console.warn('RawBT local server returned non-ok status:', response.status);
+    // Attempt 1: Fetch API with no-cors
+    try {
+      await fetch('http://127.0.0.1:40228/', {
+        method: 'POST',
+        body: bytes,
+        mode: 'no-cors', // Penting untuk bypass CORS error di Vercel/HTTPS
+        headers: {
+          'Content-Type': 'application/octet-stream'
+        }
+      });
+      return true; // no-cors selalu return opaque response, jadi kita asumsikan sukses jika tidak throw error
+    } catch (fetchErr) {
+      console.warn('Fetch failed, trying WebSocket...', fetchErr);
+      
+      // Attempt 2: WebSocket API (Bypasses CORS completely)
+      return await new Promise((resolve) => {
+        try {
+          const socket = new WebSocket('ws://127.0.0.1:40228/');
+          
+          socket.onopen = () => {
+            socket.send(bytes.buffer);
+            setTimeout(() => {
+              socket.close();
+              resolve(true);
+            }, 500);
+          };
+          
+          socket.onerror = () => {
+            toast.error('Gagal koneksi ke Printer. Pastikan Web Server di aplikasi RawBT sudah AKTIF.', { duration: 5000 });
+            resolve(false);
+          };
+        } catch (wsErr) {
+          resolve(false);
+        }
+      });
     }
   } catch (err) {
-    console.error('RawBT local server failed. Is RawBT internal web server enabled in settings?', err);
+    console.error('RawBT data processing failed', err);
+    return false;
   }
-  
-  // COMPLETELY removed the fallback to Intent (window.location.href = rawbtUrl)
-  // because Intent ALWAYS causes Android to switch apps, destroying the Kiosk UX.
-  // If printing fails, it's strictly because RawBT Web Server is not enabled.
-  return false;
 }
