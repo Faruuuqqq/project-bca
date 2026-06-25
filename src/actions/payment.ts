@@ -225,10 +225,12 @@ export async function confirmCashPayment(orderId: string, pin: string) {
   }
 
   let rawbtUrl = null;
+  let rawbtKitchenUrl = null;
   if (existingOrder?.payment_status !== 'paid') {
     const printResult = await printOrderReceipt(orderId) as any;
     if (printResult?.success && printResult?.rawbtUrl) {
       rawbtUrl = printResult.rawbtUrl;
+      rawbtKitchenUrl = printResult.rawbtKitchenUrl;
     }
   }
 
@@ -237,7 +239,7 @@ export async function confirmCashPayment(orderId: string, pin: string) {
     console.error(`[Stock] Deduction failed for order ${orderId}:`, e)
   )
 
-  return { success: true, order: data, rawbtUrl }
+  return { success: true, order: data, rawbtUrl, rawbtKitchenUrl }
 }
 
 /**
@@ -314,10 +316,14 @@ export async function reprintReceipt(orderId: string) {
   const result = await printOrderReceipt(orderId) as any
 
   if (!result?.success) {
-    return { error: result?.error || 'Gagal mencetak struk' }
+    return { success: false, error: result?.error || 'Gagal mencetak struk' }
   }
 
-  return { success: true, rawbtUrl: result?.rawbtUrl }
+  return { 
+    success: true, 
+    rawbtUrl: result.rawbtUrl,
+    rawbtKitchenUrl: result.rawbtKitchenUrl 
+  }
 }
 
 export async function voidOrder(orderId: string, pin: string) {

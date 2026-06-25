@@ -168,7 +168,14 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
     try {
       const result = await confirmCashPayment(orderId, pin)
       if (result.rawbtUrl) {
-          sendToRawBT(result.rawbtUrl)
+          sendToRawBT(result.rawbtUrl) // Struk Konsumen
+          
+          if (result.rawbtKitchenUrl) {
+            // Jeda 3 detik untuk cetak struk dapur
+            setTimeout(() => {
+              sendToRawBT(result.rawbtKitchenUrl)
+            }, 3000)
+          }
         }
         if (result.error) {
         const remaining = attempts - 1

@@ -77,7 +77,14 @@ export function QRISScreen({ orderId, qrContent, totalPrice, onCancel }: QRISScr
       try {
         const printRes = await reprintReceipt(orderId);
         if (printRes?.rawbtUrl) {
-          sendToRawBT(printRes.rawbtUrl);
+          sendToRawBT(printRes.rawbtUrl); // Struk Konsumen
+          
+          if (printRes.rawbtKitchenUrl) {
+            // Jeda 3 detik untuk cetak struk dapur
+            setTimeout(() => {
+              sendToRawBT(printRes.rawbtKitchenUrl);
+            }, 3000);
+          }
           await new Promise(resolve => setTimeout(resolve, 800));
         }
       } catch (e) { console.error('Auto print failed', e) }
