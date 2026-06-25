@@ -152,6 +152,7 @@ function SuccessContent() {
         </div>
 
         {/* Action Button - Compact */}
+        <div className="w-full space-y-4 pt-2">
           <Button 
             className="w-full h-14 rounded-2xl bg-[#3d2b1f] text-white text-lg font-black hover:bg-black shadow-lg transition-all active:scale-[0.98] group relative overflow-hidden"
             onClick={() => router.push('/')}
