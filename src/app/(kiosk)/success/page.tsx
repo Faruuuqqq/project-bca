@@ -37,7 +37,7 @@ function SuccessContent() {
   const orderId = searchParams.get('id')
   
   const [order, setOrder] = useState<Order | null>(null)
-  const [countdown, setCountdown] = useState(7)
+  const [countdown, setCountdown] = useState(12)
   const hasPrinted = useRef(false)
 
   useEffect(() => {
