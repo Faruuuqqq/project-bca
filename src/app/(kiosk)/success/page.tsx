@@ -152,7 +152,6 @@ function SuccessContent() {
         </div>
 
         {/* Action Button - Compact */}
-        <div className="w-full space-y-4 pt-2">
           <Button 
             className="w-full h-14 rounded-2xl bg-[#3d2b1f] text-white text-lg font-black hover:bg-black shadow-lg transition-all active:scale-[0.98] group relative overflow-hidden"
             onClick={() => router.push('/')}
@@ -166,9 +165,31 @@ function SuccessContent() {
             </div>
           </Button>
           
-          <div className="flex items-center justify-center gap-2 text-brand-neutral font-black text-[9px] uppercase tracking-[0.15em] animate-pulse">
+          <Button 
+            variant="outline"
+            className="w-full h-14 rounded-2xl border-2 border-brand-primary text-brand-primary text-lg font-black hover:bg-brand-primary/5 shadow-sm transition-all active:scale-[0.98]"
+            onClick={async () => {
+              try {
+                // Pause countdown when printing
+                setCountdown(999);
+                const { reprintReceipt } = await import('@/actions/payment');
+                const { sendToRawBT } = await import('@/lib/rawbt-client');
+                const res = await reprintReceipt(orderId!);
+                if (res?.rawbtKitchenUrl) {
+                  sendToRawBT(res.rawbtKitchenUrl);
+                }
+              } catch (e) {
+                console.error(e);
+              }
+            }}
+          >
+            <Printer size={20} className="mr-2" />
+            CETAK STRUK DAPUR
+          </Button>
+          
+          <div className="flex items-center justify-center gap-2 text-brand-neutral font-black text-[9px] uppercase tracking-[0.15em] animate-pulse pt-2">
             <Printer size={14} />
-            <p>Struk Sedang Dicetak...</p>
+            <p>Struk Konsumen Tercetak Otomatis</p>
           </div>
         </div>
       </div>
