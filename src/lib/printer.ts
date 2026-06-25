@@ -9,8 +9,9 @@ const ALIGN_LEFT = ESC + 'a0'
 const ALIGN_CENTER = ESC + 'a1'
 const BOLD_ON = ESC + 'E1'
 const BOLD_OFF = ESC + 'E0'
-const DOUBLE_HEIGHT = ESC + '!1' // Double height font (Kitchen copy size)
-const NORMAL_FONT = ESC + '!\x00' // Fix: reset to normal 1x1 font size
+const TITLE_FONT = ESC + '!\x11' // Double height & width
+const KITCHEN_FONT = ESC + '!\x10' // Double height only
+const NORMAL_FONT = ESC + '!\x00' // Normal 1x1 font
 const CUT_PAPER = GS + 'V' + String.fromCharCode(66) + String.fromCharCode(0) // Partial/Full cut
 
 function formatCurrency(amount: number) {
@@ -39,9 +40,9 @@ export async function printOrderReceipt(orderId: string) {
     let receiptData = INIT
 
     // --- 1. KITCHEN COPY ---
-    receiptData += ALIGN_CENTER + BOLD_ON + DOUBLE_HEIGHT
+    receiptData += ALIGN_CENTER + BOLD_ON + TITLE_FONT
     receiptData += "=== COPY DAPUR ===\n\n"
-    receiptData += NORMAL_FONT + BOLD_ON
+    receiptData += KITCHEN_FONT + BOLD_ON
     receiptData += `ANTREAN: #${order.queue_number}\n`
     receiptData += `TIPE: ${order.order_type === 'take-away' ? 'BAWA PULANG' : 'MAKAN SINI'}\n`
     receiptData += `WAKTU: ${new Date(order.created_at).toLocaleString('id-ID')}\n`
@@ -57,13 +58,14 @@ export async function printOrderReceipt(orderId: string) {
       receiptData += '\n'
     })
     receiptData += ALIGN_CENTER + "--------------------------------\n"
-    receiptData += "\n\n" + CUT_PAPER // Potong kertas untuk dapur
+    receiptData += "\n" + CUT_PAPER // Potong kertas untuk dapur
 
     // --- 2. CUSTOMER COPY ---
     receiptData += INIT + ALIGN_CENTER + BOLD_ON
     receiptData += "AYAM KALINTANG\n"
     receiptData += NORMAL_FONT + BOLD_OFF
-    receiptData += "Jl. Contoh No. 123, Bandung\n"
+    receiptData += "Depan Polsek Jatinangor, Cikeruh\n"
+    receiptData += "Kec. Jatinangor, Sumedang 45360\n"
     receiptData += "--------------------------------\n"
     receiptData += ALIGN_LEFT
     receiptData += `ANTREAN : #${order.queue_number}\n`
@@ -73,7 +75,7 @@ export async function printOrderReceipt(orderId: string) {
     
     order.order_items?.forEach((item: any) => {
       // Format Item Name, Qty, and Price (32 chars max for 58mm)
-      const priceStr = formatCurrency(item.unit_price * item.quantity)
+      const priceStr = formatCurrency(item.subtotal)
       const nameAndQty = `${item.quantity}x ${item.menu_name}`.substring(0, 18).padEnd(18, ' ')
       const line = `${nameAndQty} Rp${priceStr.padStart(9, ' ')}\n`
       receiptData += line
@@ -85,18 +87,18 @@ export async function printOrderReceipt(orderId: string) {
     
     receiptData += "--------------------------------\n"
     receiptData += BOLD_ON
-    receiptData += `TOTAL: Rp ${formatCurrency(order.total_amount)}\n`
+    receiptData += `TOTAL: Rp ${formatCurrency(order.total_price)}\n`
     receiptData += BOLD_OFF
     receiptData += "================================\n"
     receiptData += ALIGN_CENTER
     receiptData += "Terima Kasih Atas Kunjungan Anda!\n"
     receiptData += "Mohon tunggu nomor antrean Anda\ndipanggil oleh kasir.\n"
-    receiptData += "\n\n\n\n\n" + CUT_PAPER // Potong kertas konsumen
+    receiptData += "\n\n" + CUT_PAPER // Potong kertas konsumen
 
 // Generate RawBT Intent URL for Android Client
     const buffer = Buffer.from(receiptData, 'latin1')
     const base64Data = buffer.toString('base64')
-    const rawbtUrl = 'intent:base64,' + base64Data + '#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;B.silent=true;end;'
+    const rawbtUrl = 'intent:base64,' + base64Data + '#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;B.silent=true;S.return=true;end;'
     
     return { success: true, rawbtUrl }
 

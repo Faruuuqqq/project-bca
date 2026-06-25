@@ -212,10 +212,17 @@ export async function confirmCashPayment(orderId: string, pin: string) {
     .from('orders')
     .update({ payment_status: 'paid' })
     .eq('id', orderId)
+    .eq('payment_status', 'unpaid')
     .select()
     .single()
 
-  if (error) throw new Error('Gagal mengonfirmasi pembayaran')
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // Order is already paid due to concurrent request
+      return { success: true, order: existingOrder, rawbtUrl: null }
+    }
+    throw new Error('Gagal mengonfirmasi pembayaran')
+  }
 
   let rawbtUrl = null;
   if (existingOrder?.payment_status !== 'paid') {

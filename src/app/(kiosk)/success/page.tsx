@@ -72,17 +72,7 @@ function SuccessContent() {
     return () => clearInterval(timer)
   }, [orderId, router, supabase])
 
-  // Auto-print when order data is loaded
-  useEffect(() => {
-    if (order && !hasPrinted.current) {
-      hasPrinted.current = true
-      // Short delay to ensure Receipt component is rendered
-      const printTimer = setTimeout(() => {
-        window.print()
-      }, 600)
-      return () => clearTimeout(printTimer)
-    }
-  }, [order])
+  // Removed window.print
 
   // Handle redirect when countdown reaches 0
   useEffect(() => {

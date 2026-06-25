@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -66,8 +66,12 @@ export function QRISScreen({ orderId, qrContent, totalPrice, onCancel }: QRISScr
   const [isPinModalOpen, setIsPinModalOpen] = useState(false)
   const [pin, setPin] = useState('')
   const [isConfirmingPin, setIsConfirmingPin] = useState(false)
+  const isRedirectingRef = useRef(false)
 
   const handleSuccess = useCallback(async (shouldPrint = true) => {
+    if (isRedirectingRef.current) return
+    isRedirectingRef.current = true
+    
     clearCart()
     if (shouldPrint) {
       try {

@@ -80,6 +80,7 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
   
   const [pin, setPin] = useState('')
   const [isConfirming, setIsConfirming] = useState(false)
+  const isConfirmingRef = useRef(false)
   const [isVerifyingRecovery, setIsVerifyingVercovery] = useState(false)
   
   // PERSISTENCE: Gunakan localStorage agar sisa percobaan tidak reset saat di-refresh
@@ -155,6 +156,8 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
   }
 
   const handleCashierConfirm = async () => {
+    if (isConfirmingRef.current) return;
+    isConfirmingRef.current = true;
     if (isLocked) return
     if (pin.length < 4) {
       toast.error('PIN minimal 4 digit')
@@ -216,18 +219,18 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
           </Button>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-12 lg:p-16 text-center touch-scroll overflow-y-auto">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-8 lg:p-12 text-center touch-scroll overflow-hidden">
           
-          <div className="mb-6 lg:mb-8 relative">
+          <div className="mb-4 lg:mb-6 relative">
             <div className="absolute inset-0 bg-brand-primary/10 rounded-full blur-xl animate-pulse" />
-            <div className="relative p-6 lg:p-8 bg-white rounded-full shadow-xl shadow-brand-primary/10 border border-blue-50">
-              <Banknote className="w-16 h-16 lg:w-20 lg:h-20 text-brand-primary" />
+            <div className="relative p-5 lg:p-6 bg-white rounded-full shadow-xl shadow-brand-primary/10 border border-blue-50">
+              <Banknote className="w-14 h-14 lg:w-16 lg:h-16 text-brand-primary" />
             </div>
           </div>
 
-          <div className="space-y-2 mb-10 lg:mb-14">
+          <div className="space-y-1 mb-6 lg:mb-8">
             <p className="text-brand-neutral font-black uppercase tracking-[0.25em] text-xs lg:text-sm">Nomor Antrean Anda</p>
-            <h3 className="text-8xl lg:text-[140px] font-black text-[#1a1a2e] leading-none tracking-tighter drop-shadow-sm">
+            <h3 className="text-7xl lg:text-[120px] font-black text-[#1a1a2e] leading-none tracking-tighter drop-shadow-sm">
               {queueNumber}
             </h3>
             {customerName && (
@@ -262,7 +265,7 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
           
           <Button 
             variant="ghost" 
-            className="mt-10 h-14 px-8 rounded-2xl text-zinc-400 font-bold uppercase tracking-widest text-xs hover:bg-red-50 hover:text-red-500 transition-all touch-manipulation"
+            className="mt-6 lg:mt-8 h-12 lg:h-14 px-8 rounded-2xl text-zinc-400 font-bold uppercase tracking-widest text-xs hover:bg-red-50 hover:text-red-500 transition-all touch-manipulation"
             onClick={onCancel}
           >
             Batalkan Pesanan
