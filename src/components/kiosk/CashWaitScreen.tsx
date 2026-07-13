@@ -167,10 +167,8 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
     setIsConfirming(true)
     try {
       const result = await confirmCashPayment(orderId, pin)
-      if (result.rawbtUrl) {
-          sendToRawBT(result.rawbtUrl)
-        }
-        if (result.error) {
+      
+      if (result.error) {
         const remaining = attempts - 1
         setAttempts(remaining)
         setPin('')
@@ -191,7 +189,12 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
         toast.success('Pembayaran Tunai Dikonfirmasi!')
         localStorage.removeItem('kiosk_pin_attempts')
         localStorage.removeItem('kiosk_pin_locked')
-        handleSuccess()
+        
+        if (result.rawbtUrl) {
+          sendToRawBT(result.rawbtUrl)
+        }
+        
+        router.push(`/success?id=${orderId}`)
       }
     } catch (error: unknown) {
       toast.error((error as Error).message || 'Gagal mengonfirmasi pembayaran')

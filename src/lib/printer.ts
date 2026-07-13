@@ -36,32 +36,8 @@ export async function printOrderReceipt(orderId: string) {
 
     // Bypassing IP check for RawBT Mobile Integration
 
-    // Bangun string cetakan (ESC/POS)
-    let receiptData = INIT
-
-    // --- 1. KITCHEN COPY ---
-    receiptData += ALIGN_CENTER + BOLD_ON + TITLE_FONT
-    receiptData += "=== COPY DAPUR ===\n\n"
-    receiptData += KITCHEN_FONT + BOLD_ON
-    receiptData += `ANTREAN: #${order.queue_number}\n`
-    receiptData += `TIPE: ${order.order_type === 'take-away' ? 'BAWA PULANG' : 'MAKAN SINI'}\n`
-    receiptData += `WAKTU: ${new Date(order.created_at).toLocaleString('id-ID')}\n`
-    receiptData += "--------------------------------\n"
-    
-    receiptData += ALIGN_LEFT + BOLD_ON
-    order.order_items?.forEach((item: any) => {
-      receiptData += `[ ${item.quantity}x ] ${item.menu_name.toUpperCase()}\n`
-      if (item.order_item_options && item.order_item_options.length > 0) {
-        const opts = item.order_item_options.map((o: any) => o.value_label).join(', ')
-        receiptData += `      * ${opts}\n`
-      }
-      receiptData += '\n'
-    })
-    receiptData += ALIGN_CENTER + "--------------------------------\n"
-    receiptData += "\n" + CUT_PAPER // Potong kertas untuk dapur
-
-    // --- 2. CUSTOMER COPY ---
-    receiptData += INIT + ALIGN_CENTER + BOLD_ON
+    // --- 1. CUSTOMER COPY ---
+    let receiptData = INIT + ALIGN_CENTER + BOLD_ON
     receiptData += "AYAM KALINTANG\n"
     receiptData += NORMAL_FONT + BOLD_OFF
     receiptData += "Depan Polsek Jatinangor, Cikeruh\n"
@@ -80,7 +56,12 @@ export async function printOrderReceipt(orderId: string) {
       const line = `${nameAndQty} Rp${priceStr.padStart(9, ' ')}\n`
       receiptData += line
       if (item.order_item_options && item.order_item_options.length > 0) {
-        const opts = item.order_item_options.map((o: any) => o.value_label).join(', ')
+        const grouped = item.order_item_options.reduce((acc: any, curr: any) => {
+          if (!acc[curr.value_label]) acc[curr.value_label] = 0
+          acc[curr.value_label] += 1
+          return acc
+        }, {})
+        const opts = Object.entries(grouped).map(([label, qty]) => (qty as number) > 1 ? `${qty}x ${label}` : label).join(', ')
         receiptData += `  * ${opts}\n`
       }
     })
@@ -93,12 +74,39 @@ export async function printOrderReceipt(orderId: string) {
     receiptData += ALIGN_CENTER
     receiptData += "Terima Kasih Atas Kunjungan Anda!\n"
     receiptData += "Mohon tunggu nomor antrean Anda\ndipanggil oleh kasir.\n"
-    receiptData += "\n\n" + CUT_PAPER // Potong kertas konsumen
+    
+    // Memberikan space secukupnya agar bisa dirobek sebelum dapur di-print
+    receiptData += "\n\n\n\n\n" + CUT_PAPER // Potong kertas konsumen
 
-// Generate RawBT Intent URL for Android Client
+    // --- 2. KITCHEN COPY ---
+    receiptData += INIT + ALIGN_CENTER + BOLD_ON + TITLE_FONT
+    receiptData += "=== COPY DAPUR ===\n\n"
+    receiptData += KITCHEN_FONT + BOLD_ON
+    receiptData += `ANTREAN: #${order.queue_number}\n`
+    receiptData += `TIPE: ${order.order_type === 'take-away' ? 'BAWA PULANG' : 'MAKAN SINI'}\n`
+    receiptData += `WAKTU: ${new Date(order.created_at).toLocaleString('id-ID')}\n`
+    receiptData += "--------------------------------\n"
+    
+    receiptData += ALIGN_LEFT + BOLD_ON
+    order.order_items?.forEach((item: any) => {
+      receiptData += `[ ${item.quantity}x ] ${item.menu_name.toUpperCase()}\n`
+      if (item.order_item_options && item.order_item_options.length > 0) {
+        const grouped = item.order_item_options.reduce((acc: any, curr: any) => {
+          if (!acc[curr.value_label]) acc[curr.value_label] = 0
+          acc[curr.value_label] += 1
+          return acc
+        }, {})
+        const opts = Object.entries(grouped).map(([label, qty]) => (qty as number) > 1 ? `${qty}x ${label}` : label).join(', ')
+        receiptData += `      * ${opts}\n`
+      }
+      receiptData += '\n'
+    })
+    receiptData += ALIGN_CENTER + "--------------------------------\n"
+    receiptData += "\n" + CUT_PAPER // Potong kertas untuk dapur
+
+    // Generate RawBT Intent URL for Android Client
     const buffer = Buffer.from(receiptData, 'latin1')
-    const base64Data = buffer.toString('base64')
-    const rawbtUrl = 'intent:base64,' + base64Data + '#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;B.silent=true;S.return=true;end;'
+    const rawbtUrl = 'intent:base64,' + buffer.toString('base64') + '#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;B.silent=true;S.return=true;end;'
     
     return { success: true, rawbtUrl }
 

@@ -37,7 +37,7 @@ function SuccessContent() {
   const orderId = searchParams.get('id')
   
   const [order, setOrder] = useState<Order | null>(null)
-  const [countdown, setCountdown] = useState(7)
+  const [countdown, setCountdown] = useState(12)
   const hasPrinted = useRef(false)
 
   useEffect(() => {
@@ -166,7 +166,7 @@ function SuccessContent() {
             </div>
           </Button>
           
-          <div className="flex items-center justify-center gap-2 text-brand-neutral font-black text-[9px] uppercase tracking-[0.15em] animate-pulse">
+          <div className="flex items-center justify-center gap-2 text-brand-neutral font-black text-[9px] uppercase tracking-[0.15em] animate-pulse pt-2">
             <Printer size={14} />
             <p>Struk Sedang Dicetak...</p>
           </div>

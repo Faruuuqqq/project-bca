@@ -23,7 +23,8 @@ export async function createOrder(data: {
   const menuIds = data.items.map(i => i.menuId)
   const { data: currentMenus, error: menuError } = await supabase
     .from('menus')
-    .select('id, name, price, current_stock, is_sold_out')
+    // INCLUDE menu_options and menu_option_values TO VERIFY PRICES AND REQUIRED RULES
+    .select('id, name, price, current_stock, is_sold_out, menu_options(id, is_required, menu_option_values(id, extra_price))')
     .in('id', menuIds)
 
   if (menuError || !currentMenus) {
@@ -43,16 +44,55 @@ export async function createOrder(data: {
     // Recalculate price safely on server
     let serverSubtotal = Number(dbMenu.price) * item.quantity
     
-    // Add extra price from options
+    // Add extra price from options based on quantities
+    let extraOptionsCost = 0
     if (item.options && item.options.length > 0) {
+      // Group by optionId
+      const optionsByGroup: Record<string, typeof item.options> = {}
       for (const opt of item.options) {
-        // Here we trust the extraPrice passed from client for now, 
-        // to be perfectly secure we should also query menu_option_values.
-        // But preventing base price tampering is the critical part.
-        serverSubtotal += Number(opt.extraPrice) * item.quantity
+        if (!optionsByGroup[opt.optionId]) optionsByGroup[opt.optionId] = []
+        optionsByGroup[opt.optionId].push(opt)
+      }
+
+      for (const [optionId, opts] of Object.entries(optionsByGroup)) {
+        const dbOption = dbMenu.menu_options?.find((o: any) => o.id === optionId)
+        const isRequired = dbOption ? dbOption.is_required : false
+        
+        let groupQty = 0
+        let groupCost = 0
+        const pricesInGroup: number[] = []
+
+        for (const opt of opts) {
+          if (opt.quantity > 0) {
+            // Get verified price from DB if possible
+            const dbVal = dbOption?.menu_option_values?.find((v: any) => v.id === opt.valueId)
+            const verifiedPrice = dbVal ? Number(dbVal.extra_price) : Number(opt.extraPrice)
+
+            groupQty += opt.quantity
+            groupCost += opt.quantity * verifiedPrice
+            
+            for(let i=0; i<opt.quantity; i++) {
+              pricesInGroup.push(verifiedPrice)
+            }
+          }
+        }
+
+        if (groupQty > 0) {
+          if (isRequired) {
+            // The discount is the base/cheapest option in this group (e.g. 11000 for Ayam, 0 for Sambal)
+            let defaultDiscount = 0
+            if (dbOption?.menu_option_values && dbOption.menu_option_values.length > 0) {
+              defaultDiscount = Math.min(...dbOption.menu_option_values.map((v: any) => Number(v.extra_price)))
+            }
+            extraOptionsCost += Math.max(0, groupCost - defaultDiscount)
+          } else {
+            extraOptionsCost += groupCost
+          }
+        }
       }
     }
 
+    serverSubtotal += extraOptionsCost * item.quantity
     calculatedTotalPrice += serverSubtotal
 
     // Overwrite client values with server-verified values
@@ -98,19 +138,22 @@ export async function createOrder(data: {
     throw new Error('Gagal menyimpan item pesanan')
   }
 
-  // 3. Insert order item options
+  // 5. Insert order item options with expanded quantities
   const itemOptions: { order_item_id: string | undefined; option_value_id: string; option_name: string; value_label: string; extra_price: number }[] = []
   data.items.forEach((item) => {
     if (item.options) {
       const orderItemId = insertedItems.find(ii => ii.menu_id === item.menuId)?.id
       item.options.forEach(opt => {
-        itemOptions.push({
-          order_item_id: orderItemId,
-          option_value_id: opt.valueId,
-          option_name: opt.optionName,
-          value_label: opt.valueLabel,
-          extra_price: opt.extraPrice
-        })
+        // Expand quantity into multiple rows!
+        for (let i = 0; i < opt.quantity; i++) {
+          itemOptions.push({
+            order_item_id: orderItemId,
+            option_value_id: opt.valueId,
+            option_name: opt.optionName,
+            value_label: opt.valueLabel,
+            extra_price: opt.extraPrice // Note: DB stores individual extra_price here (could be 0 for the first one if we wanted, but it's okay to just store the raw price since total is verified)
+          })
+        }
       })
     }
   })
@@ -125,7 +168,7 @@ export async function createOrder(data: {
     }
   }
 
-  // 4. Handle QRIS Payment (Midtrans)
+  // 6. Handle QRIS Payment (Midtrans)
   if (data.paymentMethod === 'QRIS') {
     try {
       // Generate QRIS URL using Midtrans Core API
@@ -151,7 +194,7 @@ export async function createOrder(data: {
     }
   }
 
-  // 5. Handle Cash Payment
+  // 7. Handle Cash Payment
   return {
     success: true,
     orderId: order.id,

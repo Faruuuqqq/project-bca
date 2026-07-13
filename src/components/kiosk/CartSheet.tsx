@@ -1,6 +1,6 @@
 'use client'
 
-import { useCartStore, CartItem } from '@/store/cart'
+import { useCartStore, CartItem, getOptionsHash } from '@/store/cart'
 import {
   Sheet,
   SheetContent,
@@ -19,17 +19,9 @@ interface CartSheetProps {
 }
 
 export function CartSheet({ open, onOpenChange, onCheckout }: CartSheetProps) {
-  const { items, updateQty, orderType } = useCartStore()
+  const { items, removeItem, updateQty, clearCart, orderType } = useCartStore()
 
   const totalPrice = items.reduce((sum, item) => sum + item.subtotal, 0)
-
-  const getOptionsHash = (options?: CartItem['options']) => {
-    if (!options) return ''
-    return options
-      .map((o) => o.valueId)
-      .sort()
-      .join('-')
-  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -79,7 +71,7 @@ export function CartSheet({ open, onOpenChange, onCheckout }: CartSheetProps) {
                     <h4 className="font-black text-[#3d2b1f] uppercase text-sm md:text-base lg:text-lg truncate leading-tight">{item.name}</h4>
                     {item.options && item.options.length > 0 && (
                       <p className="text-[9px] lg:text-[10px] text-zinc-500 font-bold uppercase tracking-tight truncate mt-0.5 opacity-60">
-                        {item.options.map(o => o.valueLabel).join(' • ')}
+                        {item.options.map(o => `${o.quantity > 1 ? o.quantity + "x " : ""}${o.valueLabel}`).join(' • ')}
                       </p>
                     )}
                     <p className="text-base lg:text-lg font-black text-brand-primary mt-1.5">

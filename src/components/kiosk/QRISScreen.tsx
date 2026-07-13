@@ -77,7 +77,7 @@ export function QRISScreen({ orderId, qrContent, totalPrice, onCancel }: QRISScr
       try {
         const printRes = await reprintReceipt(orderId);
         if (printRes?.rawbtUrl) {
-          sendToRawBT(printRes.rawbtUrl);
+          sendToRawBT(printRes.rawbtUrl); // Struk Konsumen Otomatis
           await new Promise(resolve => setTimeout(resolve, 800));
         }
       } catch (e) { console.error('Auto print failed', e) }

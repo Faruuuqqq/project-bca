@@ -19,7 +19,12 @@ async function OrdersHistoryContent({
   to?: string
 }) {
   const offset = (page - 1) * ITEMS_PER_PAGE
-  const { orders, total } = await getOrdersHistory(ITEMS_PER_PAGE, offset)
+  const { orders, total } = await getOrdersHistory(ITEMS_PER_PAGE, offset, {
+    search,
+    status,
+    dateFrom: from,
+    dateTo: to
+  })
   const totalPages = Math.ceil((total || 0) / ITEMS_PER_PAGE)
 
   return (
