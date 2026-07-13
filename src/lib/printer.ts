@@ -37,69 +37,78 @@ export async function printOrderReceipt(orderId: string) {
     // Bypassing IP check for RawBT Mobile Integration
 
     // --- 1. CUSTOMER COPY ---
-    let customerData = INIT + ALIGN_CENTER + BOLD_ON
-    customerData += "AYAM KALINTANG\n"
-    customerData += NORMAL_FONT + BOLD_OFF
-    customerData += "Depan Polsek Jatinangor, Cikeruh\n"
-    customerData += "Kec. Jatinangor, Sumedang 45360\n"
-    customerData += "--------------------------------\n"
-    customerData += ALIGN_LEFT
-    customerData += `ANTREAN : #${order.queue_number}\n`
-    customerData += `WAKTU   : ${new Date(order.created_at).toLocaleString('id-ID')}\n`
-    customerData += `TIPE    : ${order.order_type === 'take-away' ? 'Bawa Pulang' : 'Makan Sini'}\n`
-    customerData += "--------------------------------\n"
+    let receiptData = INIT + ALIGN_CENTER + BOLD_ON
+    receiptData += "AYAM KALINTANG\n"
+    receiptData += NORMAL_FONT + BOLD_OFF
+    receiptData += "Depan Polsek Jatinangor, Cikeruh\n"
+    receiptData += "Kec. Jatinangor, Sumedang 45360\n"
+    receiptData += "--------------------------------\n"
+    receiptData += ALIGN_LEFT
+    receiptData += `ANTREAN : #${order.queue_number}\n`
+    receiptData += `WAKTU   : ${new Date(order.created_at).toLocaleString('id-ID')}\n`
+    receiptData += `TIPE    : ${order.order_type === 'take-away' ? 'Bawa Pulang' : 'Makan Sini'}\n`
+    receiptData += "--------------------------------\n"
     
     order.order_items?.forEach((item: any) => {
       // Format Item Name, Qty, and Price (32 chars max for 58mm)
       const priceStr = formatCurrency(item.subtotal)
       const nameAndQty = `${item.quantity}x ${item.menu_name}`.substring(0, 18).padEnd(18, ' ')
       const line = `${nameAndQty} Rp${priceStr.padStart(9, ' ')}\n`
-      customerData += line
+      receiptData += line
       if (item.order_item_options && item.order_item_options.length > 0) {
-        const opts = item.order_item_options.map((o: any) => o.value_label).join(', ')
-        customerData += `  * ${opts}\n`
+        const grouped = item.order_item_options.reduce((acc: any, curr: any) => {
+          if (!acc[curr.value_label]) acc[curr.value_label] = 0
+          acc[curr.value_label] += 1
+          return acc
+        }, {})
+        const opts = Object.entries(grouped).map(([label, qty]) => (qty as number) > 1 ? `${qty}x ${label}` : label).join(', ')
+        receiptData += `  * ${opts}\n`
       }
     })
     
-    customerData += "--------------------------------\n"
-    customerData += BOLD_ON
-    customerData += `TOTAL: Rp ${formatCurrency(order.total_price)}\n`
-    customerData += BOLD_OFF
-    customerData += "================================\n"
-    customerData += ALIGN_CENTER
-    customerData += "Terima Kasih Atas Kunjungan Anda!\n"
-    customerData += "Mohon tunggu nomor antrean Anda\ndipanggil oleh kasir.\n"
-    customerData += "\n\n" + CUT_PAPER // Potong kertas konsumen
+    receiptData += "--------------------------------\n"
+    receiptData += BOLD_ON
+    receiptData += `TOTAL: Rp ${formatCurrency(order.total_price)}\n`
+    receiptData += BOLD_OFF
+    receiptData += "================================\n"
+    receiptData += ALIGN_CENTER
+    receiptData += "Terima Kasih Atas Kunjungan Anda!\n"
+    receiptData += "Mohon tunggu nomor antrean Anda\ndipanggil oleh kasir.\n"
+    
+    // Memberikan space secukupnya agar bisa dirobek sebelum dapur di-print
+    receiptData += "\n\n\n\n\n" + CUT_PAPER // Potong kertas konsumen
 
     // --- 2. KITCHEN COPY ---
-    let kitchenData = INIT + ALIGN_CENTER + BOLD_ON + TITLE_FONT
-    kitchenData += "=== COPY DAPUR ===\n\n"
-    kitchenData += KITCHEN_FONT + BOLD_ON
-    kitchenData += `ANTREAN: #${order.queue_number}\n`
-    kitchenData += `TIPE: ${order.order_type === 'take-away' ? 'BAWA PULANG' : 'MAKAN SINI'}\n`
-    kitchenData += `WAKTU: ${new Date(order.created_at).toLocaleString('id-ID')}\n`
-    kitchenData += "--------------------------------\n"
+    receiptData += INIT + ALIGN_CENTER + BOLD_ON + TITLE_FONT
+    receiptData += "=== COPY DAPUR ===\n\n"
+    receiptData += KITCHEN_FONT + BOLD_ON
+    receiptData += `ANTREAN: #${order.queue_number}\n`
+    receiptData += `TIPE: ${order.order_type === 'take-away' ? 'BAWA PULANG' : 'MAKAN SINI'}\n`
+    receiptData += `WAKTU: ${new Date(order.created_at).toLocaleString('id-ID')}\n`
+    receiptData += "--------------------------------\n"
     
-    kitchenData += ALIGN_LEFT + BOLD_ON
+    receiptData += ALIGN_LEFT + BOLD_ON
     order.order_items?.forEach((item: any) => {
-      kitchenData += `[ ${item.quantity}x ] ${item.menu_name.toUpperCase()}\n`
+      receiptData += `[ ${item.quantity}x ] ${item.menu_name.toUpperCase()}\n`
       if (item.order_item_options && item.order_item_options.length > 0) {
-        const opts = item.order_item_options.map((o: any) => o.value_label).join(', ')
-        kitchenData += `      * ${opts}\n`
+        const grouped = item.order_item_options.reduce((acc: any, curr: any) => {
+          if (!acc[curr.value_label]) acc[curr.value_label] = 0
+          acc[curr.value_label] += 1
+          return acc
+        }, {})
+        const opts = Object.entries(grouped).map(([label, qty]) => (qty as number) > 1 ? `${qty}x ${label}` : label).join(', ')
+        receiptData += `      * ${opts}\n`
       }
-      kitchenData += '\n'
+      receiptData += '\n'
     })
-    kitchenData += ALIGN_CENTER + "--------------------------------\n"
-    kitchenData += "\n" + CUT_PAPER // Potong kertas untuk dapur
+    receiptData += ALIGN_CENTER + "--------------------------------\n"
+    receiptData += "\n" + CUT_PAPER // Potong kertas untuk dapur
 
     // Generate RawBT Intent URL for Android Client
-    const bufferCust = Buffer.from(customerData, 'latin1')
-    const rawbtUrl = 'intent:base64,' + bufferCust.toString('base64') + '#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;B.silent=true;S.return=true;end;'
+    const buffer = Buffer.from(receiptData, 'latin1')
+    const rawbtUrl = 'intent:base64,' + buffer.toString('base64') + '#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;B.silent=true;S.return=true;end;'
     
-    const bufferKitch = Buffer.from(kitchenData, 'latin1')
-    const rawbtKitchenUrl = 'intent:base64,' + bufferKitch.toString('base64') + '#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;B.silent=true;S.return=true;end;'
-    
-    return { success: true, rawbtUrl, rawbtKitchenUrl }
+    return { success: true, rawbtUrl }
 
   } catch (err) {
     console.error('Print failed:', err)

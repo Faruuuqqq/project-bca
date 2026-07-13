@@ -239,7 +239,7 @@ export async function confirmCashPayment(orderId: string, pin: string) {
     console.error(`[Stock] Deduction failed for order ${orderId}:`, e)
   )
 
-  return { success: true, order: data, rawbtUrl, rawbtKitchenUrl }
+  return { success: true, order: data, rawbtUrl }
 }
 
 /**

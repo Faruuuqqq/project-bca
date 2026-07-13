@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Search, Eye } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { ChevronLeft, ChevronRight, Search, Eye, Printer, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -13,8 +13,11 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { cn, formatRupiah, formatDateTime } from '@/lib/utils'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { adminTokens } from '@/components/admin/_tokens'
+import { toast } from 'sonner'
+import { reprintReceipt } from '@/actions/payment'
+import { exportOrdersCSV } from '@/actions/admin/orders'
 
 interface OrderItemOption {
   id: string
@@ -57,79 +60,135 @@ export default function OrdersHistoryPage({
   currentPage,
   totalPages,
   totalOrders,
+  searchQuery,
+  statusFilter,
+  dateFrom,
+  dateTo,
 }: OrdersHistoryPageProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
 
-  // Client-side filter state
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [paymentFilter, setPaymentFilter] = useState('all')
+  // State
+  const [search, setSearch] = useState(searchQuery || '')
+  const [status, setStatus] = useState(statusFilter || 'all')
+  const [paymentFilter, setPaymentFilter] = useState(searchParams.get('payment') || 'all')
+  const [from, setFrom] = useState(dateFrom || '')
+  const [to, setTo] = useState(dateTo || '')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
+  const [isPrinting, setIsPrinting] = useState(false)
 
-  // Client-side filtering — applied on top of the server-fetched page
-  const filteredOrders = useMemo(() => {
-    return initialOrders.filter((order) => {
-      const matchesSearch =
-        !search ||
-        order.id.toLowerCase().includes(search.toLowerCase()) ||
-        order.order_items?.some((item) =>
-          item.menu_name.toLowerCase().includes(search.toLowerCase())
-        )
+  // Sync state when props change
+  useEffect(() => {
+    setSearch(searchQuery || '')
+    setStatus(statusFilter || 'all')
+    setPaymentFilter(searchParams.get('payment') || 'all')
+    setFrom(dateFrom || '')
+    setTo(dateTo || '')
+  }, [searchQuery, statusFilter, dateFrom, dateTo, searchParams])
 
-      const matchesStatus =
-        statusFilter === 'all' ||
-        (statusFilter === 'unpaid' && order.payment_status === 'unpaid') ||
-        (statusFilter === 'completed' && order.order_status === 'completed' && order.payment_status === 'paid') ||
-        (statusFilter === 'pending' &&
-          order.payment_status === 'paid' &&
-          !['completed', 'void'].includes(order.order_status))
+  // Update URL params function
+  const updateFilters = () => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('page', '1') // Reset to page 1 on filter change
+    
+    if (search) params.set('search', search)
+    else params.delete('search')
+    
+    if (status && status !== 'all') params.set('status', status)
+    else params.delete('status')
 
-      const matchesPayment =
-        paymentFilter === 'all' || order.payment_method === paymentFilter
-
-      return matchesSearch && matchesStatus && matchesPayment
-    })
-  }, [initialOrders, search, statusFilter, paymentFilter])
+    if (paymentFilter && paymentFilter !== 'all') params.set('payment', paymentFilter)
+    else params.delete('payment')
+    
+    if (from) params.set('from', from)
+    else params.delete('from')
+    
+    if (to) params.set('to', to)
+    else params.delete('to')
+    
+    router.push(`${pathname}?${params.toString()}`)
+  }
 
   const handlePageChange = (newPage: number) => {
-    const params = new URLSearchParams()
+    const params = new URLSearchParams(searchParams.toString())
     params.set('page', newPage.toString())
-    router.push(`/admin/orders/history?${params.toString()}`)
+    router.push(`${pathname}?${params.toString()}`)
+  }
+
+  const handleExportCSV = async () => {
+    setIsExporting(true)
+    const toastId = toast.loading('Mengekspor data ke CSV...')
+    try {
+      const csv = await exportOrdersCSV({
+        search: search || undefined,
+        status: status !== 'all' ? status : undefined,
+        payment: paymentFilter !== 'all' ? paymentFilter : undefined,
+        dateFrom: from || undefined,
+        dateTo: to || undefined
+      })
+      
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      link.setAttribute('href', url)
+      link.setAttribute('download', `Laporan_Pesanan_${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      toast.success('Berhasil mengekspor data', { id: toastId })
+    } catch (error) {
+      toast.error('Gagal mengekspor data', { id: toastId })
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handleReprintReceipt = async (orderId: string) => {
+    setIsPrinting(true)
+    const toastId = toast.loading('Mencetak struk...')
+    try {
+      const res = await reprintReceipt(orderId)
+      if (res.success) {
+        toast.success('Membuka aplikasi print...', { id: toastId })
+        // Buka URL RawBT di background
+        if (res.rawbtUrl) {
+          const { sendToRawBT } = await import('@/lib/rawbt-client')
+          sendToRawBT(res.rawbtUrl)
+        }
+      } else {
+        toast.error(res.error || 'Gagal mencetak struk', { id: toastId })
+      }
+    } catch (error) {
+      toast.error('Terjadi kesalahan saat mencetak', { id: toastId })
+    } finally {
+      setIsPrinting(false)
+    }
   }
 
   const getStatusBadge = (status: string, paymentStatus: string) => {
-    if (paymentStatus !== 'paid') {
-      return { label: 'Belum Bayar', color: 'bg-amber-100 text-amber-700' }
-    }
-    if (status === 'completed') {
-      return { label: 'Selesai', color: 'bg-emerald-100 text-emerald-700' }
-    }
-    if (status === 'ready') {
-      return { label: 'Siap', color: 'bg-teal-100 text-teal-700' }
-    }
-    if (status === 'cooking') {
-      return { label: 'Dimasak', color: 'bg-orange-100 text-orange-700' }
-    }
+    if (paymentStatus !== 'paid') return { label: 'Belum Bayar', color: 'bg-amber-100 text-amber-700' }
+    if (status === 'completed') return { label: 'Selesai', color: 'bg-emerald-100 text-emerald-700' }
+    if (status === 'ready') return { label: 'Siap', color: 'bg-teal-100 text-teal-700' }
+    if (status === 'cooking') return { label: 'Dimasak', color: 'bg-orange-100 text-orange-700' }
     return { label: 'Diproses', color: 'bg-blue-100 text-blue-700' }
   }
 
   const getPaymentBadge = (method: string) => {
-    if (method === 'QRIS') {
-      return { label: 'QRIS', color: 'bg-indigo-100 text-indigo-700' }
-    }
+    if (method === 'QRIS') return { label: 'QRIS', color: 'bg-indigo-100 text-indigo-700' }
     return { label: 'Tunai', color: 'bg-orange-100 text-orange-700' }
   }
 
   const getOrderTypeBadge = (type: string) => {
-    if (type === 'dine-in') {
-      return { label: 'Makan di Tempat', color: 'bg-purple-100 text-purple-700' }
-    }
+    if (type === 'dine-in') return { label: 'Makan di Tempat', color: 'bg-purple-100 text-purple-700' }
     return { label: 'Bawa Pulang', color: 'bg-cyan-100 text-cyan-700' }
   }
 
-  const qrisOrders = filteredOrders.filter(o => o.payment_method === 'QRIS' && o.payment_status === 'paid')
-  const cashOrders = filteredOrders.filter(o => o.payment_method === 'CASH' && o.payment_status === 'paid')
-  
+  const qrisOrders = initialOrders.filter(o => o.payment_method === 'QRIS' && o.payment_status === 'paid')
+  const cashOrders = initialOrders.filter(o => o.payment_method === 'CASH' && o.payment_status === 'paid')
   const qrisTotal = qrisOrders.reduce((sum, order) => sum + (order.total_price || 0), 0)
   const cashTotal = cashOrders.reduce((sum, order) => sum + (order.total_price || 0), 0)
 
@@ -139,22 +198,14 @@ export default function OrdersHistoryPage({
       <div className="flex items-start sm:items-center justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push('/admin/orders')}
-              aria-label="Kembali ke antrean"
-              className="mr-2"
-            >
-              <ChevronLeft size={18} aria-hidden="true" />
+            <Button variant="ghost" size="sm" onClick={() => router.push('/admin/orders')} className="mr-2">
+              <ChevronLeft size={18} />
             </Button>
             <h1 className={adminTokens.pageTitle}>Riwayat Pesanan</h1>
           </div>
           <p className={adminTokens.pageSubtitle}>
-            Total {totalOrders} pesanan | Halaman {currentPage} dari {totalPages}
+            Total {totalOrders} pesanan | Halaman {currentPage} dari {totalPages || 1}
           </p>
-          
-          {/* Cash/QRIS Summary for Current Filter */}
           <div className="flex gap-3 mt-3">
             <Badge variant="outline" className="text-indigo-700 bg-indigo-50/50 border-indigo-200 py-1 px-3">
               QRIS: {qrisOrders.length}x (Rp {new Intl.NumberFormat('id-ID').format(qrisTotal)})
@@ -164,55 +215,66 @@ export default function OrdersHistoryPage({
             </Badge>
           </div>
         </div>
+        <Button onClick={handleExportCSV} disabled={isExporting} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl">
+          <Download className="mr-2 h-4 w-4" /> Export CSV
+        </Button>
       </div>
 
       {/* FILTERS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* Search */}
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+      <div className="bg-card p-4 rounded-2xl border border-border space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="relative lg:col-span-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Cari ID/Menu..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-11 rounded-xl"
+            />
+          </div>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="px-3 h-11 border border-border rounded-xl bg-background text-sm font-medium"
+          >
+            <option value="all">Semua Status</option>
+            <option value="pending">Diproses</option>
+            <option value="completed">Selesai</option>
+            <option value="unpaid">Belum Bayar</option>
+          </select>
+          <select
+            value={paymentFilter}
+            onChange={(e) => setPaymentFilter(e.target.value)}
+            className="px-3 h-11 border border-border rounded-xl bg-background text-sm font-medium"
+          >
+            <option value="all">Semua Pembayaran</option>
+            <option value="QRIS">QRIS</option>
+            <option value="CASH">Tunai</option>
+          </select>
           <Input
-            type="text"
-            placeholder="Cari Order ID atau nama menu..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-            aria-label="Cari pesanan"
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="h-11 rounded-xl text-sm"
+          />
+          <Input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="h-11 rounded-xl text-sm"
           />
         </div>
-
-        {/* Status Filter */}
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 border border-border rounded-lg bg-card text-sm font-medium"
-          aria-label="Filter status pesanan"
-        >
-          <option value="all">Semua Status</option>
-          <option value="pending">Diproses</option>
-          <option value="completed">Selesai</option>
-          <option value="unpaid">Belum Bayar</option>
-        </select>
-
-        {/* Payment Method Filter */}
-        <select
-          value={paymentFilter}
-          onChange={(e) => setPaymentFilter(e.target.value)}
-          className="px-3 py-2 border border-border rounded-lg bg-card text-sm font-medium"
-          aria-label="Filter metode pembayaran"
-        >
-          <option value="all">Semua Pembayaran</option>
-          <option value="QRIS">QRIS</option>
-          <option value="CASH">Tunai</option>
-        </select>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" className="rounded-xl h-10" onClick={() => {
+            setSearch(''); setStatus('all'); setPaymentFilter('all'); setFrom(''); setTo('')
+            router.push(pathname)
+          }}>
+            Reset
+          </Button>
+          <Button onClick={updateFilters} className="rounded-xl h-10 font-semibold">Terapkan Filter</Button>
+        </div>
       </div>
-
-      {/* Active filter result count */}
-      {(search || statusFilter !== 'all' || paymentFilter !== 'all') && (
-        <p className="text-sm text-muted-foreground">
-          Menampilkan <span className="font-bold text-foreground">{filteredOrders.length}</span> hasil dari {initialOrders.length} pesanan di halaman ini
-        </p>
-      )}
 
       {/* ORDERS TABLE */}
       <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
@@ -220,28 +282,28 @@ export default function OrdersHistoryPage({
           <table className="w-full">
             <thead>
               <tr className="bg-muted/40 border-b border-border">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Order ID</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Item</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Total</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Tipe</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Pembayaran</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Waktu</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground">Aksi</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase">Order ID</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase">Item</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase">Total</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase">Tipe</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase">Pembayaran</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase">Status</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase">Waktu</th>
+                <th className="px-4 py-4 text-right text-xs font-semibold text-muted-foreground uppercase">Aksi</th>
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.length === 0 ? (
+              {initialOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-12 text-center text-sm text-muted-foreground">
                     <div className="space-y-2">
-                      <div className="text-lg font-semibold">Tidak ada pesanan ditemukan</div>
-                      <p>Coba ubah filter pencarian Anda</p>
+                      <div className="text-lg font-semibold text-foreground">Tidak ada pesanan ditemukan</div>
+                      <p>Coba sesuaikan filter pencarian Anda.</p>
                     </div>
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((order) => {
+                initialOrders.map((order) => {
                   const statusBadge = getStatusBadge(order.order_status, order.payment_status)
                   const paymentBadge = getPaymentBadge(order.payment_method)
                   const orderTypeBadge = getOrderTypeBadge(order.order_type)
@@ -249,35 +311,16 @@ export default function OrdersHistoryPage({
 
                   return (
                     <tr key={order.id} className="border-b border-border hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3">
-                        <span className="text-xs font-mono font-semibold">{order.id.slice(0, 8)}</span>
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <span className="text-muted-foreground">{itemCount} item</span>
-                      </td>
+                      <td className="px-4 py-3"><span className="text-xs font-mono font-semibold">{order.id.slice(0, 8)}</span></td>
+                      <td className="px-4 py-3 text-sm"><span className="text-muted-foreground">{itemCount} item</span></td>
                       <td className="px-4 py-3 text-sm font-semibold">{formatRupiah(order.total_price)}</td>
-                      <td className="px-4 py-3">
-                        <Badge className={cn('text-xs', orderTypeBadge.color)}>
-                          {orderTypeBadge.label}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge className={cn('text-xs', paymentBadge.color)}>
-                          {paymentBadge.label}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge className={cn('text-xs', statusBadge.color)}>
-                          {statusBadge.label}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {formatDateTime(order.created_at)}
-                      </td>
+                      <td className="px-4 py-3"><Badge className={cn('text-xs border-none', orderTypeBadge.color)}>{orderTypeBadge.label}</Badge></td>
+                      <td className="px-4 py-3"><Badge className={cn('text-xs border-none', paymentBadge.color)}>{paymentBadge.label}</Badge></td>
+                      <td className="px-4 py-3"><Badge className={cn('text-xs border-none', statusBadge.color)}>{statusBadge.label}</Badge></td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{formatDateTime(order.created_at)}</td>
                       <td className="px-4 py-3 text-right">
-                        <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
-                          <Eye size={14} className="mr-2" aria-hidden="true" />
-                          Detail
+                        <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)} className="rounded-lg h-8">
+                          <Eye size={14} className="mr-1.5" /> Detail
                         </Button>
                       </td>
                     </tr>
@@ -291,111 +334,90 @@ export default function OrdersHistoryPage({
 
       {/* PAGINATION */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="text-sm text-muted-foreground">
-          Halaman {currentPage} dari {totalPages} ({totalOrders} total pesanan)
+        <div className="text-sm font-medium text-muted-foreground">
+          Halaman {currentPage} dari {totalPages || 1}
         </div>
-
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            aria-label="Halaman sebelumnya"
-          >
-            <ChevronLeft size={16} aria-hidden="true" />
+          <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage <= 1} className="h-9 w-9 p-0 rounded-lg">
+            <ChevronLeft size={16} />
           </Button>
-
-          <div className="px-3 py-1.5 bg-muted rounded-lg text-sm font-semibold">
-            {currentPage} / {totalPages}
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage >= totalPages}
-            aria-label="Halaman berikutnya"
-          >
-            <ChevronRight size={16} aria-hidden="true" />
+          <div className="px-4 py-2 bg-muted rounded-lg text-sm font-semibold">{currentPage} / {totalPages || 1}</div>
+          <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= totalPages} className="h-9 w-9 p-0 rounded-lg">
+            <ChevronRight size={16} />
           </Button>
         </div>
       </div>
 
       {/* ORDER DETAIL DIALOG */}
       <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
-        <DialogContent className="sm:max-w-md bg-white" showCloseButton={false}>
-          <DialogHeader>
-            <DialogTitle>Detail Pesanan #{selectedOrder?.id.slice(0, 8)}</DialogTitle>
+        <DialogContent className="sm:max-w-md bg-white rounded-2xl overflow-hidden p-0 border-border" showCloseButton={false}>
+          <DialogHeader className="p-6 border-b border-border bg-muted/20">
+            <DialogTitle className="text-xl">Detail Pesanan <span className="font-mono text-brand-primary">#{selectedOrder?.id.slice(0, 8)}</span></DialogTitle>
           </DialogHeader>
-          <div className="py-4 space-y-4">
+          <div className="p-6 space-y-5">
             <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Waktu:</span>
-              <span className="font-medium">{selectedOrder ? formatDateTime(selectedOrder.created_at) : ''}</span>
+              <span className="text-muted-foreground font-medium">Waktu:</span>
+              <span className="font-semibold">{selectedOrder ? formatDateTime(selectedOrder.created_at) : ''}</span>
             </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Tipe:</span>
-              <Badge className={cn('text-xs', selectedOrder ? getOrderTypeBadge(selectedOrder.order_type).color : '')}>
-                {selectedOrder ? getOrderTypeBadge(selectedOrder.order_type).label : ''}
-              </Badge>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Status:</span>
-              <Badge className={cn('text-xs', selectedOrder ? getStatusBadge(selectedOrder.order_status, selectedOrder.payment_status).color : '')}>
-                {selectedOrder ? getStatusBadge(selectedOrder.order_status, selectedOrder.payment_status).label : ''}
-              </Badge>
-            </div>
-            <div className="flex justify-between items-center text-sm border-b pb-4">
-              <span className="text-muted-foreground">Pembayaran:</span>
-              <Badge className={cn('text-xs', selectedOrder ? getPaymentBadge(selectedOrder.payment_method).color : '')}>
+            <div className="flex justify-between items-center text-sm border-b border-border pb-5">
+              <span className="text-muted-foreground font-medium">Pembayaran:</span>
+              <Badge className={cn('text-xs border-none', selectedOrder ? getPaymentBadge(selectedOrder.payment_method).color : '')}>
                 {selectedOrder ? getPaymentBadge(selectedOrder.payment_method).label : ''}
               </Badge>
             </div>
-
-            {/* Items with Customizations */}
-            <div className="space-y-3 pt-2">
-              <h4 className="text-sm font-semibold">Daftar Menu</h4>
-              <div className="max-h-64 overflow-y-auto space-y-3 pr-1">
+            <div className="space-y-3 pt-1">
+              <h4 className="text-sm font-bold text-foreground">Daftar Menu</h4>
+              <div className="max-h-64 overflow-y-auto space-y-3 pr-2 touch-scroll">
                 {selectedOrder?.order_items?.map((item, idx) => (
-                  <div key={idx} className="text-sm space-y-1">
+                  <div key={idx} className="text-sm space-y-1 bg-muted/30 p-3 rounded-xl border border-border">
                     <div className="flex justify-between">
-                      <div className="flex gap-2 font-medium">
-                        <span>{item.quantity}x</span>
+                      <div className="flex gap-2 font-bold text-foreground">
+                        <span className="text-brand-primary">{item.quantity}x</span>
                         <span>{item.menu_name}</span>
                       </div>
-                      <span className="text-muted-foreground shrink-0">
-                        {formatRupiah(item.menu_price * item.quantity)}
-                      </span>
+                      <span className="text-muted-foreground font-semibold shrink-0">{formatRupiah(item.menu_price * item.quantity)}</span>
                     </div>
-                    {/* Customizations */}
-                    {item.order_item_options && item.order_item_options.length > 0 && (
-                      <div className="pl-5 space-y-0.5">
-                        {item.order_item_options.map((opt) => (
-                          <div key={opt.id} className="flex justify-between text-xs text-muted-foreground">
-                            <span>↳ {opt.option_name}: {opt.value_label}</span>
-                            {opt.extra_price > 0 && (
-                              <span>+{formatRupiah(opt.extra_price)}</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {item.order_item_options && item.order_item_options.length > 0 && (() => {
+                      const grouped = item.order_item_options.reduce((acc, curr) => {
+                        if (!acc[curr.id]) acc[curr.id] = { ...curr, qty: 0 }
+                        acc[curr.id].qty += 1
+                        return acc
+                      }, {} as Record<string, OrderItemOption & { qty: number }>)
+
+                      return (
+                        <div className="pl-6 space-y-1 mt-1.5">
+                          {Object.values(grouped).map((opt) => (
+                            <div key={opt.id} className="flex justify-between text-xs text-muted-foreground font-medium">
+                              <span className="flex items-center gap-1.5">
+                                <span className="w-1 h-1 rounded-full bg-brand-secondary"></span>
+                                {opt.option_name}: {opt.qty > 1 ? `${opt.qty}x ` : ''}{opt.value_label}
+                              </span>
+                              {opt.extra_price > 0 && <span className="font-semibold text-foreground/80">+{formatRupiah(opt.extra_price * opt.qty)}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </div>
                 ))}
-                {!selectedOrder?.order_items?.length && (
-                  <div className="text-sm text-muted-foreground italic">Tidak ada detail item.</div>
-                )}
               </div>
             </div>
-
-            <div className="flex justify-between items-center font-bold text-lg pt-4 border-t">
-              <span>Total</span>
-              <span>{selectedOrder ? formatRupiah(selectedOrder.total_price) : ''}</span>
+            <div className="flex justify-between items-center font-bold text-lg pt-5 border-t border-border">
+              <span>Total Tagihan</span>
+              <span className="text-brand-primary">{selectedOrder ? formatRupiah(selectedOrder.total_price) : ''}</span>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedOrder(null)} className="w-full">
+          <DialogFooter className="p-6 bg-muted/20 border-t border-border flex-col sm:flex-row gap-3 sm:gap-2">
+            <Button variant="outline" onClick={() => setSelectedOrder(null)} className="w-full sm:w-1/2 rounded-xl h-11 font-semibold">
               TUTUP
+            </Button>
+            <Button 
+              onClick={() => selectedOrder && handleReprintReceipt(selectedOrder.id)} 
+              disabled={isPrinting}
+              className="w-full sm:w-1/2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-11 font-bold shadow-sm"
+            >
+              <Printer className="w-4 h-4 mr-2" />
+              CETAK STRUK
             </Button>
           </DialogFooter>
         </DialogContent>

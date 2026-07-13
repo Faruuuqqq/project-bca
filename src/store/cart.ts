@@ -13,6 +13,7 @@ export type CartItem = {
     valueId: string
     valueLabel: string
     extraPrice: number
+    quantity: number
   }[]
 }
 
@@ -29,10 +30,10 @@ interface CartState {
 }
 
 // Helper to create a hash of options to distinguish same menu items with different customizations
-const getOptionsHash = (options?: CartItem['options']) => {
+export const getOptionsHash = (options?: CartItem['options']) => {
   if (!options) return ''
   return options
-    .map((o) => o.valueId)
+    .map((o) => `${o.valueId}x${o.quantity}`)
     .sort()
     .join('-')
 }

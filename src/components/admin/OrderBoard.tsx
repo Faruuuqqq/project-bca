@@ -325,9 +325,20 @@ function ConnectionPill({ state }: { state: ConnState }) {
 
 function OptionsRow({ options }: { options?: OrderItemOption[] }) {
   if (!options || options.length === 0) return null
+  
+  // Group identical options
+  const grouped = options.reduce((acc, curr) => {
+    acc[curr.value_label] = (acc[curr.value_label] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  const labels = Object.entries(grouped).map(([label, qty]) => {
+    return qty > 1 ? `${qty}x ${label}` : label
+  })
+
   return (
     <div className="text-xs text-muted-foreground italic ml-4 leading-snug">
-      {options.map((o) => o.value_label).join(' • ')}
+      {labels.join(' • ')}
     </div>
   )
 }

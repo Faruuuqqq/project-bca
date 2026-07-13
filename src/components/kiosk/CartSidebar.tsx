@@ -1,6 +1,6 @@
 'use client'
 
-import { useCartStore, CartItem } from '@/store/cart'
+import { useCartStore, CartItem, getOptionsHash } from '@/store/cart'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -22,11 +22,6 @@ export function CartSidebar({ onCheckout, hidden = false }: CartSidebarProps) {
 
   const totalItems = items.reduce((s, i) => s + i.quantity, 0)
   const totalPrice = items.reduce((s, i) => s + i.subtotal, 0)
-
-  const getOptionsHash = (options?: CartItem['options']) => {
-    if (!options) return ''
-    return options.map((o) => o.valueId).sort().join('-')
-  }
 
   if (hidden) return null
 
@@ -88,7 +83,7 @@ export function CartSidebar({ onCheckout, hidden = false }: CartSidebarProps) {
                     </p>
                     {item.options && item.options.length > 0 && (
                       <p className="text-[10px] lg:text-xs text-zinc-400 font-semibold uppercase tracking-tight mt-1 truncate">
-                        {item.options.map((o) => o.valueLabel).join(' • ')}
+                        {item.options.map((o) => `${o.quantity > 1 ? o.quantity + "x " : ""}${o.valueLabel}`).join(' • ')}
                       </p>
                     )}
                   </div>

@@ -107,7 +107,7 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     const menuId = adjustTarget?.id || (formData.get('menu_id') as string)
-    const amount = parseInt(formData.get('amount') as string, 10)
+    const finalStock = parseInt(formData.get('amount') as string, 10)
     const reason = formData.get('reason') as string
     const dailyStockValue = formData.get('daily_stock') as string
     const newDailyStock = dailyStockValue ? parseInt(dailyStockValue, 10) : null
@@ -115,16 +115,20 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
     const toastId = toast.loading('Menyimpan perubahan stok...')
     try {
       // Update daily stock if provided and changed
-      if (newDailyStock !== null && adjustTarget) {
-        const currentDailyStock = initialMenus.find(m => m.id === menuId)?.daily_stock ?? 0
+      const menu = initialMenus.find(m => m.id === menuId)
+      if (newDailyStock !== null && menu) {
+        const currentDailyStock = menu.daily_stock ?? 0
         if (newDailyStock !== currentDailyStock) {
           await updateDailyStock(menuId, newDailyStock)
         }
       }
 
-      // Update current stock if amount is non-zero
-      if (amount !== 0) {
-        await adjustStock(menuId, amount, reason)
+      // Calculate difference for current stock
+      const currentStock = menu?.current_stock ?? 0
+      const amountDiff = finalStock - currentStock
+
+      if (amountDiff !== 0) {
+        await adjustStock(menuId, amountDiff, reason)
       }
 
       toast.success('Stok berhasil diperbarui', { id: toastId })
@@ -389,7 +393,7 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
               )}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Jumlah Perubahan
+                  Jumlah Stok Final
                 </Label>
                 <div className="relative">
                   <Input
@@ -398,7 +402,8 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
                     step="1"
                     inputMode="numeric"
                     required
-                    placeholder="Contoh: 10 atau -5"
+                    placeholder="Contoh: 150"
+                    defaultValue={adjustTarget ? adjustTarget.stock : ''}
                     className="rounded-xl border border-border h-11 min-h-[44px] pr-14 font-semibold text-base"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground uppercase">
@@ -406,7 +411,7 @@ export function InventoryManager({ initialMenus, initialHistory }: InventoryMana
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Gunakan angka positif untuk menambah, negatif untuk mengurangi (misal: -5).
+                  Masukkan jumlah stok akhir yang benar (misal ketik 150 jika stok tersisa 150).
                 </p>
               </div>
               <div className="space-y-1.5">
