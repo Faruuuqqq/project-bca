@@ -19,7 +19,7 @@ async function OrdersHistoryContent({
   to?: string
 }) {
   const offset = (page - 1) * ITEMS_PER_PAGE
-  const { orders, total } = await getOrdersHistory(ITEMS_PER_PAGE, offset, {
+  const { orders, total, recap } = await getOrdersHistory(ITEMS_PER_PAGE, offset, {
     search,
     status,
     dateFrom: from,
@@ -37,6 +37,7 @@ async function OrdersHistoryContent({
       statusFilter={status}
       dateFrom={from}
       dateTo={to}
+      recap={recap}
     />
   )
 }

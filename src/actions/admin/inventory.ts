@@ -1,4 +1,5 @@
 'use server'
+import { getSharedMenuIds } from '@/lib/inventoryGroups'
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -21,27 +22,40 @@ export async function adjustStock(menuId: string, amount: number, reason: string
   // FIX BUG: Prevent negative stock
   const newStock = Math.max(0, (menu.current_stock || 0) + amount)
 
-  // Parallelize: update stock + insert log (independent operations)
-  const [{ error: updateError }, { error: logError }] = await Promise.all([
-    supabase
-      .from('menus')
-      .update({ current_stock: newStock })
-      .eq('id', menuId),
-    supabase.from('inventory_movements').insert({
-      menu_id: menuId,
-      movement_type: amount >= 0 ? 'in' : 'out',
-      amount: Math.abs(amount),
-      reason: reason,
-    }),
-  ])
+  // Fetch all menus to resolve shared groups
+  const { data: allMenus } = await supabase.from('menus').select('id, name')
+  const menusList = allMenus || []
+  
+  const targetMenuIds = getSharedMenuIds(menu.name, menusList)
 
-  if (updateError) throw new Error(updateError.message)
-  if (logError) throw new Error(logError.message)
+  // Execute updates for all linked menus
+  const updatePromises = targetMenuIds.map(async (targetId) => {
+    const isSynced = targetId !== menuId
+    const moveReason = isSynced ? `${reason} (Sync: ${menu.name})` : reason
 
-  // Check and trigger stock alerts if needed (fire-and-forget)
-  checkAndTriggerStockAlerts(menuId).catch((e) => {
-    console.warn("Stock alert check failed:", e)
+    const [{ error: updateError }, { error: logError }] = await Promise.all([
+      supabase
+        .from('menus')
+        .update({ current_stock: newStock })
+        .eq('id', targetId),
+      supabase.from('inventory_movements').insert({
+        menu_id: targetId,
+        movement_type: amount >= 0 ? 'in' : 'out',
+        amount: Math.abs(amount),
+        reason: moveReason,
+      }),
+    ])
+
+    if (updateError) throw new Error(updateError.message)
+    if (logError) throw new Error(logError.message)
+
+    // Check alerts for all affected
+    checkAndTriggerStockAlerts(targetId).catch((e) => {
+      console.warn("Stock alert check failed:", e)
+    })
   })
+
+  await Promise.all(updatePromises)
 
   revalidatePath('/admin/inventory')
   return { success: true }

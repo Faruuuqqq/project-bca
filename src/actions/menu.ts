@@ -116,7 +116,7 @@ export async function deleteCategory(id: string) {
     .delete()
     .eq('id', id)
 
-  if (error) throw new Error(error.message)
+  if (error) return { success: false, error: error.message }
   
   revalidatePath('/admin/menus')
   return { success: true }
@@ -177,12 +177,21 @@ export async function updateMenu(id: string, formData: FormData) {
 
 export async function deleteMenu(id: string) {
   const supabase = createAdminClient()
+  
+  // Clean up related menu options to prevent FK constraint error if cascade is missing
+  await supabase.from('menu_options').delete().eq('menu_id', id)
+  
   const { error } = await supabase
     .from('menus')
     .delete()
     .eq('id', id)
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    if (error.code === '23503') {
+      return { success: false, error: 'Gagal menghapus: Menu ini sudah memiliki riwayat pesanan (coba ubah stok menjadi 0 atau Habis).' }
+    }
+    return { success: false, error: error.message }
+  }
   
   revalidatePath('/admin/menus')
   return { success: true }
