@@ -193,10 +193,20 @@ export function MenuManager({ initialCategories, initialMenus }: MenuManagerProp
     if (!deleteTarget) return
     try {
       if (deleteTarget.type === 'menu') {
-        await deleteMenu(deleteTarget.id)
+        const result = await deleteMenu(deleteTarget.id)
+        if (result?.error) {
+          toast.error(result.error)
+          setDeleteTarget(null)
+          return
+        }
         toast.success('Menu berhasil dihapus')
       } else {
-        await deleteCategory(deleteTarget.id)
+        const result = await deleteCategory(deleteTarget.id)
+        if (result?.error) {
+          toast.error(result.error)
+          setDeleteTarget(null)
+          return
+        }
         toast.success('Kategori berhasil dihapus')
       }
       router.refresh()

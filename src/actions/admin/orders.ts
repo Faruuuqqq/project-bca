@@ -1,4 +1,6 @@
 'use server'
+import { createAdminClient } from "@/lib/supabase/admin"
+import { revalidatePath } from 'next/cache'
 
 import { createClient } from '@/lib/supabase/server'
 
@@ -46,12 +48,44 @@ export async function getOrdersHistory(
     query = query.lte('created_at', `${filters.dateTo}T23:59:59.999Z`)
   }
 
+  // Get recap configuration
+  const { data: config } = await supabase.from('store_configs').select('config_value').eq('config_key', 'revenue_reset_at').single()
+  const resetAt = config?.config_value ? new Date(config.config_value) : null
+
+  // Optional: We can fetch the real totals without pagination, applying the same filters PLUS the reset_at
+  let recapQuery = supabase.from('orders').select('payment_method, total_price, payment_status, created_at')
+  
+  if (resetAt) {
+    recapQuery = recapQuery.gte('created_at', resetAt.toISOString())
+  }
+  
+  // Apply standard filters to recap too if they exist, EXCEPT date which might override
+  if (filters?.dateFrom) {
+     recapQuery = recapQuery.gte('created_at', `${filters.dateFrom}T00:00:00Z`)
+  }
+  if (filters?.dateTo) {
+     recapQuery = recapQuery.lte('created_at', `${filters.dateTo}T23:59:59.999Z`)
+  }
+  
+  const { data: recapData } = await recapQuery
+  
+  let qrisTotal = 0
+  let cashTotal = 0
+  if (recapData) {
+     for (const order of recapData) {
+        if (order.payment_status === 'paid') {
+           if (order.payment_method === 'QRIS') qrisTotal += (order.total_price || 0)
+           if (order.payment_method === 'CASH') cashTotal += (order.total_price || 0)
+        }
+     }
+  }
+
   const { data, error, count } = await query
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
 
   if (error) throw new Error(error.message)
-  return { orders: data, total: count }
+  return { orders: data, total: count, recap: { qrisTotal, cashTotal, resetAt: resetAt?.toISOString() || null } }
 }
 
 export async function getOrderById(orderId: string) {
@@ -132,4 +166,16 @@ export async function exportOrdersCSV(filters?: {
   }
   
   return csv
+}
+
+
+export async function resetRevenueRecap() {
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('store_configs')
+    .upsert({ config_key: 'revenue_reset_at', config_value: new Date().toISOString() }, { onConflict: 'config_key' })
+    
+  if (error) throw new Error(error.message)
+  revalidatePath('/admin/orders/history')
+  return { success: true }
 }

@@ -53,8 +53,10 @@ interface OrdersHistoryPageProps {
   statusFilter?: string
   dateFrom?: string
   dateTo?: string
+  recap?: { qrisTotal: number, cashTotal: number, resetAt: string | null }
 }
 
+import { resetRevenueRecap } from '@/actions/admin/orders'
 export default function OrdersHistoryPage({
   initialOrders,
   currentPage,
@@ -64,6 +66,7 @@ export default function OrdersHistoryPage({
   statusFilter,
   dateFrom,
   dateTo,
+  recap,
 }: OrdersHistoryPageProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -78,6 +81,24 @@ export default function OrdersHistoryPage({
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [isPrinting, setIsPrinting] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
+
+  const handleResetRecap = async () => {
+    if (confirm('Yakin ingin mereset angka rekap pendapatan? Angka akan dihitung ulang dari waktu sekarang (riwayat pesanan lama tidak akan dihapus).')) {
+      setIsResetting(true)
+      try {
+        const res = await resetRevenueRecap()
+        if (res.success) {
+          toast.success('Rekap pendapatan berhasil direset')
+          router.refresh()
+        }
+      } catch (err: any) {
+        toast.error(err.message)
+      } finally {
+        setIsResetting(false)
+      }
+    }
+  }
 
   // Sync state when props change
   useEffect(() => {
@@ -187,10 +208,9 @@ export default function OrdersHistoryPage({
     return { label: 'Bawa Pulang', color: 'bg-cyan-100 text-cyan-700' }
   }
 
-  const qrisOrders = initialOrders.filter(o => o.payment_method === 'QRIS' && o.payment_status === 'paid')
-  const cashOrders = initialOrders.filter(o => o.payment_method === 'CASH' && o.payment_status === 'paid')
-  const qrisTotal = qrisOrders.reduce((sum, order) => sum + (order.total_price || 0), 0)
-  const cashTotal = cashOrders.reduce((sum, order) => sum + (order.total_price || 0), 0)
+  // Fallback to local calculation if recap is not provided
+  const qrisTotal = recap ? recap.qrisTotal : initialOrders.filter(o => o.payment_method === 'QRIS' && o.payment_status === 'paid').reduce((sum, order) => sum + (order.total_price || 0), 0)
+  const cashTotal = recap ? recap.cashTotal : initialOrders.filter(o => o.payment_method === 'CASH' && o.payment_status === 'paid').reduce((sum, order) => sum + (order.total_price || 0), 0)
 
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-500">
@@ -206,13 +226,21 @@ export default function OrdersHistoryPage({
           <p className={adminTokens.pageSubtitle}>
             Total {totalOrders} pesanan | Halaman {currentPage} dari {totalPages || 1}
           </p>
-          <div className="flex gap-3 mt-3">
-            <Badge variant="outline" className="text-indigo-700 bg-indigo-50/50 border-indigo-200 py-1 px-3">
-              QRIS: {qrisOrders.length}x (Rp {new Intl.NumberFormat('id-ID').format(qrisTotal)})
+          <div className="flex gap-3 mt-3 items-center flex-wrap">
+            <Badge variant="outline" className="text-indigo-700 bg-indigo-50/50 border-indigo-200 py-1 px-3 text-sm">
+              Total QRIS: Rp {new Intl.NumberFormat('id-ID').format(qrisTotal)}
             </Badge>
-            <Badge variant="outline" className="text-orange-700 bg-orange-50/50 border-orange-200 py-1 px-3">
-              CASH: {cashOrders.length}x (Rp {new Intl.NumberFormat('id-ID').format(cashTotal)})
+            <Badge variant="outline" className="text-orange-700 bg-orange-50/50 border-orange-200 py-1 px-3 text-sm">
+              Total CASH: Rp {new Intl.NumberFormat('id-ID').format(cashTotal)}
             </Badge>
+            <Button variant="outline" size="sm" onClick={handleResetRecap} disabled={isResetting} className="ml-2 h-7 text-xs border-dashed border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700">
+              {isResetting ? 'Resetting...' : 'Reset Rekap'}
+            </Button>
+            {recap?.resetAt && (
+              <span className="text-xs text-muted-foreground ml-1">
+                (Sejak: {new Date(recap.resetAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })})
+              </span>
+            )}
           </div>
         </div>
         <Button onClick={handleExportCSV} disabled={isExporting} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl">
@@ -279,17 +307,17 @@ export default function OrdersHistoryPage({
       {/* ORDERS TABLE */}
       <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[1000px]">
             <thead>
               <tr className="bg-muted/40 border-b border-border">
-                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase">Order ID</th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase">Item</th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase">Total</th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase">Tipe</th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase">Pembayaran</th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase">Status</th>
-                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase">Waktu</th>
-                <th className="px-4 py-4 text-right text-xs font-semibold text-muted-foreground uppercase">Aksi</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Order ID</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Item</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Total</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Tipe</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Pembayaran</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Status</th>
+                <th className="px-4 py-4 text-left text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Waktu</th>
+                <th className="px-4 py-4 text-right text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -311,14 +339,14 @@ export default function OrdersHistoryPage({
 
                   return (
                     <tr key={order.id} className="border-b border-border hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3"><span className="text-xs font-mono font-semibold">{order.id.slice(0, 8)}</span></td>
-                      <td className="px-4 py-3 text-sm"><span className="text-muted-foreground">{itemCount} item</span></td>
-                      <td className="px-4 py-3 text-sm font-semibold">{formatRupiah(order.total_price)}</td>
-                      <td className="px-4 py-3"><Badge className={cn('text-xs border-none', orderTypeBadge.color)}>{orderTypeBadge.label}</Badge></td>
-                      <td className="px-4 py-3"><Badge className={cn('text-xs border-none', paymentBadge.color)}>{paymentBadge.label}</Badge></td>
-                      <td className="px-4 py-3"><Badge className={cn('text-xs border-none', statusBadge.color)}>{statusBadge.label}</Badge></td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{formatDateTime(order.created_at)}</td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 whitespace-nowrap"><span className="text-xs font-mono font-semibold">{order.id.slice(0, 8)}</span></td>
+                      <td className="px-4 py-3 text-sm whitespace-nowrap"><span className="text-muted-foreground">{itemCount} item</span></td>
+                      <td className="px-4 py-3 text-sm font-semibold whitespace-nowrap">{formatRupiah(order.total_price)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap"><Badge className={cn('text-xs border-none', orderTypeBadge.color)}>{orderTypeBadge.label}</Badge></td>
+                      <td className="px-4 py-3 whitespace-nowrap"><Badge className={cn('text-xs border-none', paymentBadge.color)}>{paymentBadge.label}</Badge></td>
+                      <td className="px-4 py-3 whitespace-nowrap"><Badge className={cn('text-xs border-none', statusBadge.color)}>{statusBadge.label}</Badge></td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{formatDateTime(order.created_at)}</td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
                         <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)} className="rounded-lg h-8">
                           <Eye size={14} className="mr-1.5" /> Detail
                         </Button>

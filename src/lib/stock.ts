@@ -1,3 +1,4 @@
+import { getSharedMenuIds } from '@/lib/inventoryGroups'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
@@ -45,23 +46,34 @@ export async function deductStockForOrder(
   const queueLabel = order.queue_number ? `#${order.queue_number}` : orderId.slice(0, 8)
   const reason = `Pesanan ${queueLabel}`
 
+  // Fetch all menus to resolve shared groups
+  const { data: allMenus } = await supabase.from('menus').select('id, name')
+  const menusList = allMenus || []
+
   // 3. Deduct stock per item and log movements in parallel
-  const deductPromises = items.map(async (item) => {
-    const { error: deductError } = await supabase.rpc('decrement_stock', {
-      p_menu_id: item.menu_id,
-      p_amount: item.quantity,
-    })
+  const deductPromises = items.flatMap((item) => {
+    const targetMenuIds = getSharedMenuIds(item.menu_name, menusList)
+    
+    return targetMenuIds.map(async (targetId) => {
+      const { error: deductError } = await supabase.rpc('decrement_stock', {
+        p_menu_id: targetId,
+        p_amount: item.quantity,
+      })
 
-    if (deductError) {
-      console.error(`[Stock] RPC decrement_stock failed for ${item.menu_name}:`, deductError.message)
-    }
+      if (deductError) {
+        console.error(`[Stock] RPC decrement_stock failed for ${targetId}:`, deductError.message)
+      }
 
-    // Log inventory movement
-    await supabase.from('inventory_movements').insert({
-      menu_id: item.menu_id,
-      movement_type: 'out',
-      amount: item.quantity,
-      reason,
+      // Log inventory movement
+      const isSynced = targetId !== item.menu_id
+      const moveReason = isSynced ? `${reason} (Sync: ${item.menu_name})` : reason
+
+      await supabase.from('inventory_movements').insert({
+        menu_id: targetId,
+        movement_type: 'out',
+        amount: item.quantity,
+        reason: moveReason,
+      })
     })
   })
 
