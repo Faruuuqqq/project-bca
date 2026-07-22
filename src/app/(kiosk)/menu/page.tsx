@@ -4,6 +4,8 @@ import { Suspense } from 'react'
 import { MenuGridSkeleton } from '@/components/kiosk/MenuGridSkeleton'
 import { MenuHeader } from '@/components/kiosk/MenuHeader'
 
+export const dynamic = 'force-dynamic'
+
 async function MenuList() {
   const supabase = await createClient()
 
@@ -23,7 +25,7 @@ async function MenuList() {
           menu_option_values (*)
         )
       `)
-      .order('sort_order', { ascending: true }),
+      .order('name', { ascending: true }),
   ])
 
   return (
