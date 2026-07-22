@@ -60,8 +60,10 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
       prevMenuId.current = menu.id
       setQuantity(1)
       
+      const filteredOptions = menu.menu_options?.filter((opt) => !opt.name.startsWith('[ARCHIVED]')) || []
+      
       const defaultSelections: Record<string, Record<string, number>> = {}
-      menu.menu_options?.forEach((opt: MenuOption) => {
+      filteredOptions.forEach((opt: MenuOption) => {
         if (opt.is_required && opt.menu_option_values && opt.menu_option_values.length > 0) {
           defaultSelections[opt.id] = {
             [opt.menu_option_values[0].id]: 1
@@ -77,7 +79,9 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
     if (!menu) return 0
 
     let extraPrice = 0
-    menu.menu_options?.forEach((opt: MenuOption) => {
+    const filteredOptions = menu.menu_options?.filter((opt) => !opt.name.startsWith('[ARCHIVED]')) || []
+    
+    filteredOptions.forEach((opt: MenuOption) => {
       const selectedForOpt = selectedOptions[opt.id] || {}
       
       let groupQty = 0
@@ -140,7 +144,8 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
   }
 
   const isAddDisabled = () => {
-    return menu.menu_options?.some((opt: MenuOption) => {
+    const filteredOptions = menu.menu_options?.filter((opt) => !opt.name.startsWith('[ARCHIVED]')) || []
+    return filteredOptions.some((opt: MenuOption) => {
       if (opt.is_required) {
         const selectedForOpt = selectedOptions[opt.id] || {}
         const totalQty = Object.values(selectedForOpt).reduce((sum, q) => sum + q, 0)
@@ -153,9 +158,10 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
   const handleAddToCart = () => {
     setIsSubmitting(true)
     const optionsForCart: { optionId: string; optionName: string; valueId: string; valueLabel: string; extraPrice: number, quantity: number }[] = []
+    const filteredOptions = menu.menu_options?.filter((opt) => !opt.name.startsWith('[ARCHIVED]')) || []
     
     for (const [optionId, valueMap] of Object.entries(selectedOptions)) {
-      const option = menu.menu_options?.find((o: MenuOption) => o.id === optionId)
+      const option = filteredOptions.find((o: MenuOption) => o.id === optionId)
       if (!option) continue
       
       for (const [vId, qty] of Object.entries(valueMap)) {
@@ -205,7 +211,7 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
         <div className="flex-1 overflow-y-auto px-6 py-4 bg-white touch-pan-y custom-scrollbar">
           <div className="pb-32">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {menu.menu_options?.map((opt: MenuOption) => (
+              {menu.menu_options?.filter((opt) => !opt.name.startsWith('[ARCHIVED]')).map((opt: MenuOption) => (
                 <div key={opt.id} className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-black text-[#3d2b1f] uppercase tracking-tight">
