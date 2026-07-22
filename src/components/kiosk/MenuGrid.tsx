@@ -141,7 +141,7 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
     setIsPaymentModalOpen(true)
   }, [])
 
-  const handleSelectPayment = async (method: 'QRIS' | 'CASH') => {
+  const handleSelectPayment = async (method: 'QRIS' | 'CASH', customerName: string) => {
     setIsPaymentModalOpen(false)
     setIsCreatingOrder(true)
     
@@ -150,6 +150,7 @@ export function MenuGrid({ initialCategories, initialMenus }: MenuGridProps) {
         items,
         orderType: orderType!,
         paymentMethod: method,
+        customerName: customerName
       })
 
       if (result.success) {

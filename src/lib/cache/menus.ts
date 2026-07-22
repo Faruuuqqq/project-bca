@@ -15,6 +15,17 @@ export const getCachedMenus = cache(async () => {
   const { data, error } = await supabase
     .from('menus')
     .select('id, name, price, cost_price, category_id, image_url, is_sold_out, current_stock, description, menu_options(id, name, is_required, selection_type, menu_option_values(id, label, extra_price, sort_order)), categories!inner(name)')
+    .order('name', { ascending: true })
+
+  if (error) throw new Error(error.message)
+  return data || []
+})
+
+export const getCachedAdminMenus = cache(async () => {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('menus')
+    .select('id, name, price, cost_price, category_id, image_url, is_sold_out, current_stock, description, menu_options(id, name, is_required, selection_type, menu_option_values(id, label, extra_price, sort_order)), categories!inner(name)')
     .order('sort_order', { ascending: true })
 
   if (error) throw new Error(error.message)
@@ -49,6 +60,14 @@ export const getCachedCategories = cache(async () => {
 
   if (error) throw new Error(error.message)
   return data || []
+})
+
+export const getCachedAdminCategoriesAndMenus = cache(async () => {
+  const [categories, menus] = await Promise.all([
+    getCachedCategories(),
+    getCachedAdminMenus(),
+  ])
+  return { categories, menus }
 })
 
 /**
