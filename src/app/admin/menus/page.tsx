@@ -1,11 +1,11 @@
 import { Suspense } from 'react'
 import { MenuManager } from '@/components/admin/MenuManager'
 import MenusLoading from './loading'
-import { getCachedCategoriesAndMenus } from '@/lib/cache/menus'
+import { getCachedAdminCategoriesAndMenus } from '@/lib/cache/menus'
 
 async function MenusContent() {
   // Uses React.cache() to deduplicate multiple menus/categories queries in same request
-  const { categories, menus } = await getCachedCategoriesAndMenus()
+  const { categories, menus } = await getCachedAdminCategoriesAndMenus()
 
   return (
     <div className="p-8">

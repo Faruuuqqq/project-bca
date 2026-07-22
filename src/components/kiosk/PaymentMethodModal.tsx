@@ -9,17 +9,20 @@ import {
 import { Button } from '@/components/ui/button'
 import { QrCode, Banknote, X, CheckCircle2, Zap, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 interface PaymentMethodModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSelect: (method: 'QRIS' | 'CASH') => void
+  onSelect: (method: 'QRIS' | 'CASH', customerName: string) => void
 }
 
 import { useState, useEffect } from 'react'
 export function PaymentMethodModal({ open, onOpenChange, onSelect }: PaymentMethodModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
-  useEffect(() => { if (!open) setIsSubmitting(false) }, [open])
+  const [customerName, setCustomerName] = useState('')
+  useEffect(() => { if (!open) { setIsSubmitting(false); setCustomerName(''); } }, [open])
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className="max-w-[90vw] sm:max-w-[480px] md:max-w-[560px] rounded-[2.5rem] md:rounded-[3rem] bg-white border-none shadow-2xl p-0 overflow-hidden outline-none">
@@ -38,6 +41,11 @@ export function PaymentMethodModal({ open, onOpenChange, onSelect }: PaymentMeth
 
         <div className="p-6 md:p-8 lg:p-10">
           <div className="flex flex-col gap-5 md:gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="customerName" className="text-xs md:text-sm font-bold text-zinc-500 uppercase tracking-wider">Atas Nama (Opsional)</Label>
+              <Input id="customerName" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Masukkan nama pelanggan..." className="h-12 md:h-14 rounded-2xl border-2 px-4 font-semibold text-lg focus-visible:ring-brand-primary" />
+            </div>
+            
             {/* QRIS OPTION - Professional Nudge */}
             <div className="relative group w-full">
               <div className="absolute -top-3 left-6 md:left-8 z-10">
@@ -48,7 +56,7 @@ export function PaymentMethodModal({ open, onOpenChange, onSelect }: PaymentMeth
               <Button
                 variant="outline"
                 className="w-full h-36 md:h-44 flex flex-col items-center justify-center gap-2 rounded-[2rem] md:rounded-[2.5rem] border-4 border-brand-primary/80 bg-brand-primary/[0.03] hover:bg-brand-primary/[0.08] hover:border-brand-primary transition-all duration-300 relative overflow-hidden touch-manipulation shadow-sm hover:shadow-md"
-                onClick={() => { setIsSubmitting(true); onSelect('QRIS'); }}
+                onClick={() => { setIsSubmitting(true); onSelect('QRIS', customerName); }}
                 disabled={isSubmitting}
               >
                 <div className="absolute right-[-10px] bottom-[-10px] text-brand-primary opacity-5 group-hover:opacity-10 transition-opacity">
@@ -69,7 +77,7 @@ export function PaymentMethodModal({ open, onOpenChange, onSelect }: PaymentMeth
               <Button
                 variant="outline"
                 className="w-full h-32 md:h-36 flex flex-col items-center justify-center gap-1.5 md:gap-2 rounded-[2rem] md:rounded-[2.5rem] border-[3px] border-zinc-100 bg-white hover:border-zinc-200 hover:bg-zinc-50 transition-all duration-300 touch-manipulation"
-                onClick={() => { setIsSubmitting(true); onSelect('CASH'); }}
+                onClick={() => { setIsSubmitting(true); onSelect('CASH', customerName); }}
                 disabled={isSubmitting}
               >
                 <Banknote size={36} className="text-zinc-400 mb-0.5 md:mb-1 md:w-10 md:h-10" />

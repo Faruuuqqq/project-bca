@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Minus, X } from 'lucide-react'
+import { Plus, Minus, X, CheckSquare, Square } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface MenuOptionValue {
@@ -220,9 +220,7 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
                   <div className="space-y-3">
                     {opt.menu_option_values?.map((val: MenuOptionValue) => {
                       const qty = selectedOptions[opt.id]?.[val.id] || 0;
-                      const totalOptQty = Object.values(selectedOptions[opt.id] || {}).reduce((sum, q) => sum + q, 0);
-                      
-                      const isRadio = opt.name.toLowerCase().includes('sambal') || opt.name.toLowerCase().includes('pedas');
+                      const isSingle = opt.selection_type === 'single';
 
                       let priceToDisplay = Number(val.extra_price);
                       let showPrice = priceToDisplay > 0;
@@ -245,12 +243,12 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
                       return (
                         <div 
                           key={val.id}
-                          onClick={() => isRadio ? handleSelectRadio(opt.id, val.id) : undefined}
-                          className={`flex items-center justify-between rounded-2xl border-2 p-3 transition-all ${isRadio ? 'cursor-pointer' : ''} ${qty > 0 ? 'border-brand-primary bg-brand-primary/5' : 'hover:border-zinc-300'}`}
+                          onClick={() => isSingle ? handleSelectRadio(opt.id, val.id) : handleUpdateOptionQty(opt.id, val.id, qty > 0 ? -1 : 1)}
+                          className={`flex items-center justify-between rounded-2xl border-2 p-3 transition-all cursor-pointer ${qty > 0 ? 'border-brand-primary bg-brand-primary/5' : 'hover:border-zinc-300'}`}
                         >
                           <div className="flex-1 flex flex-col justify-center py-1">
                             <Label 
-                              className={`font-bold text-[#3d2b1f] ${isRadio ? 'cursor-pointer' : ''}`}
+                              className={`font-bold text-[#3d2b1f] cursor-pointer`}
                             >
                               {val.label}
                             </Label>
@@ -261,30 +259,13 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
                             )}
                           </div>
                           
-                          {isRadio ? (
+                          {isSingle ? (
                             <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-colors ${qty > 0 ? 'border-brand-primary' : 'border-zinc-300'}`}>
                               {qty > 0 && <div className="h-3 w-3 rounded-full bg-brand-primary" />}
                             </div>
                           ) : (
-                            <div className="flex items-center gap-3 bg-white p-1 rounded-xl border shadow-sm">
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className={`h-8 w-8 rounded-lg ${qty > 0 ? 'text-[#3d2b1f] hover:bg-zinc-100' : 'text-zinc-300'}`}
-                                disabled={qty <= 0}
-                                onClick={(e) => { e.stopPropagation(); handleUpdateOptionQty(opt.id, val.id, -1); }}
-                              >
-                                <Minus size={16} />
-                              </Button>
-                              <span className="text-sm font-black w-4 text-center text-brand-primary">{qty}</span>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-8 w-8 rounded-lg text-[#3d2b1f] hover:bg-zinc-100"
-                                onClick={(e) => { e.stopPropagation(); handleUpdateOptionQty(opt.id, val.id, 1); }}
-                              >
-                                <Plus size={16} />
-                              </Button>
+                            <div className="flex items-center text-brand-primary">
+                              {qty > 0 ? <CheckSquare size={24} className="fill-brand-primary text-white rounded-md" /> : <Square size={24} className="text-zinc-300" />}
                             </div>
                           )}
                         </div>

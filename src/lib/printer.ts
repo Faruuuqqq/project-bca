@@ -45,7 +45,10 @@ export async function printOrderReceipt(orderId: string) {
     receiptData += "--------------------------------\n"
     receiptData += ALIGN_LEFT
     receiptData += `ANTREAN : #${order.queue_number}\n`
-    receiptData += `WAKTU   : ${new Date(order.created_at).toLocaleString('id-ID')}\n`
+    if (order.customer_name) {
+      receiptData += `NAMA    : ${order.customer_name}\n`
+    }
+    receiptData += `WAKTU   : ${new Date(order.created_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\n`
     receiptData += `TIPE    : ${order.order_type === 'take-away' ? 'Bawa Pulang' : 'Makan Sini'}\n`
     receiptData += "--------------------------------\n"
     
@@ -83,8 +86,11 @@ export async function printOrderReceipt(orderId: string) {
     receiptData += "=== COPY DAPUR ===\n\n"
     receiptData += KITCHEN_FONT + BOLD_ON
     receiptData += `ANTREAN: #${order.queue_number}\n`
+    if (order.customer_name) {
+      receiptData += `NAMA: ${order.customer_name}\n`
+    }
     receiptData += `TIPE: ${order.order_type === 'take-away' ? 'BAWA PULANG' : 'MAKAN SINI'}\n`
-    receiptData += `WAKTU: ${new Date(order.created_at).toLocaleString('id-ID')}\n`
+    receiptData += `WAKTU: ${new Date(order.created_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\n`
     receiptData += "--------------------------------\n"
     
     receiptData += ALIGN_LEFT + BOLD_ON

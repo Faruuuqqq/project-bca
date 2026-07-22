@@ -8,6 +8,7 @@ export async function createOrder(data: {
   items: CartItem[]
   orderType: 'dine-in' | 'take-away'
   paymentMethod: 'QRIS' | 'CASH'
+  customerName?: string
 }) {
   const supabase = createAdminClient()
   
@@ -107,7 +108,8 @@ export async function createOrder(data: {
       order_type: data.orderType,
       total_price: calculatedTotalPrice,
       payment_method: data.paymentMethod,
-      payment_status: 'unpaid',
+      customer_name: data.customerName || null,
+      payment_status: data.paymentMethod === 'CASH' ? 'paid' : 'unpaid',
       order_status: 'pending',
     })
     .select()
