@@ -1,16 +1,22 @@
-import { toast } from 'sonner';
-
 export async function sendToRawBT(rawbtUrl: string): Promise<boolean> {
   try {
-    // Memanggil aplikasi RawBT langsung via Intent.
-    // Metode ini 100% tahan banting di semua versi Chrome Android.
-    // Kita sudah menambahkan parameter "S.return=true" di URL backend
-    // agar layar langsung otomatis kembali ke web setelah print selesai.
-    window.location.href = rawbtUrl;
-    
-    return true;
+    // Gunakan hidden iframe agar intent RawBT langsung terpicu tanpa
+    // mengalihkan/meninggalkan halaman, sehingga tidak ada popup "buka aplikasi"
+    // yang harus diklik manual oleh user. Browser modern memproses intent://
+    // melalui iframe secara silent jika triggered dari dalam kode.
+    const iframe = document.createElement('iframe')
+    iframe.style.display = 'none'
+    iframe.src = rawbtUrl
+    document.body.appendChild(iframe)
+    setTimeout(() => {
+      document.body.removeChild(iframe)
+    }, 2000)
+    return true
   } catch (err) {
-    console.error('Gagal mengirim ke RawBT via Intent', err);
-    return false;
+    // Fallback: window.location jika iframe gagal
+    try {
+      window.location.href = rawbtUrl
+    } catch (_) {}
+    return false
   }
 }
