@@ -225,12 +225,10 @@ export async function confirmCashPayment(orderId: string, pin: string) {
   }
 
   let rawbtUrl = null;
-  let rawbtKitchenUrl = null;
   if (existingOrder?.payment_status !== 'paid') {
     const printResult = await printOrderReceipt(orderId) as any;
     if (printResult?.success && printResult?.rawbtUrl) {
       rawbtUrl = printResult.rawbtUrl;
-      rawbtKitchenUrl = printResult.rawbtKitchenUrl;
     }
   }
 
@@ -321,8 +319,7 @@ export async function reprintReceipt(orderId: string) {
 
   return { 
     success: true, 
-    rawbtUrl: result.rawbtUrl,
-    rawbtKitchenUrl: result.rawbtKitchenUrl 
+    rawbtUrl: result.rawbtUrl
   }
 }
 

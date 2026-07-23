@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Banknote, Clock, ArrowRight, KeyRound, Loader2, AlertTriangle, Lock, ShieldAlert, CheckCircle2, ChevronLeft, Delete } from 'lucide-react'
 import { useCartStore } from '@/store/cart'
-import { confirmCashPayment, verifyRecoveryCode } from '@/actions/payment'
+import { confirmCashPayment, verifyRecoveryCode, reprintReceipt } from '@/actions/payment'
 import { toast } from 'sonner'
 import { playNotificationSound } from '@/lib/audio'
 
@@ -117,6 +117,12 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
           if (payload.new.payment_status === 'paid') {
             localStorage.removeItem('kiosk_pin_attempts')
             localStorage.removeItem('kiosk_pin_locked')
+            // Auto-print via RawBT on realtime trigger
+            reprintReceipt(orderId).then((printRes) => {
+              if (printRes?.rawbtUrl) {
+                sendToRawBT(printRes.rawbtUrl)
+              }
+            }).catch(() => {})
             handleSuccess()
           } else if (payload.new.payment_status === 'void') {
             onCancel()
@@ -192,6 +198,12 @@ export function CashWaitScreen({ orderId, queueNumber, customerName, onCancel }:
         
         if (result.rawbtUrl) {
           sendToRawBT(result.rawbtUrl)
+        } else {
+          // Fallback: generate receipt manually
+          try {
+            const printRes = await reprintReceipt(orderId)
+            if (printRes?.rawbtUrl) sendToRawBT(printRes.rawbtUrl)
+          } catch (e) { console.error('Print fallback failed', e) }
         }
         
         router.push(`/success?id=${orderId}`)
