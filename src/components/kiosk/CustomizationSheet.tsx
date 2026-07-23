@@ -26,6 +26,7 @@ interface MenuOption {
   name: string
   is_required: boolean
   selection_type: 'single' | 'multiple'
+  sort_order?: number
   menu_option_values?: MenuOptionValue[]
 }
 
@@ -211,7 +212,7 @@ export function CustomizationSheet({ menu, open, onOpenChange }: CustomizationSh
         <div className="flex-1 overflow-y-auto px-6 py-4 bg-white touch-pan-y custom-scrollbar">
           <div className="pb-32">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {menu.menu_options?.filter((opt) => !opt.name.startsWith('[ARCHIVED]')).map((opt: MenuOption) => (
+              {[...(menu.menu_options || [])].sort((a, b) => (a.sort_order ?? 99) - (b.sort_order ?? 99)).filter((opt) => !opt.name.startsWith('[ARCHIVED]')).map((opt: MenuOption) => (
                 <div key={opt.id} className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-black text-[#3d2b1f] uppercase tracking-tight">

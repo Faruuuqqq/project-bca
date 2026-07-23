@@ -53,19 +53,37 @@ export async function printOrderReceipt(orderId: string) {
     receiptData += "--------------------------------\n"
     
     order.order_items?.forEach((item: any) => {
-      // Format Item Name, Qty, and Price (32 chars max for 58mm)
-      const priceStr = formatCurrency(item.subtotal)
-      const nameAndQty = `${item.quantity}x ${item.menu_name}`.substring(0, 18).padEnd(18, ' ')
-      const line = `${nameAndQty} Rp${priceStr.padStart(9, ' ')}\n`
-      receiptData += line
+      // 2-baris: baris 1 nama menu, baris 2 qty x harga (agar nama tidak terpotong)
+      const maxNameLen = 32
+      const menuName = item.menu_name.substring(0, maxNameLen)
+      const priceStr = `Rp${formatCurrency(item.subtotal)}`
+      const qtyPriceLine = `  ${item.quantity}x `.padEnd(16, ' ') + priceStr.padStart(16, ' ')
+      receiptData += `${menuName}\n`
+      receiptData += `${qtyPriceLine}\n`
+
+      // Tampilkan opsi, filter [ARCHIVED], urut berdasarkan option_name priority
       if (item.order_item_options && item.order_item_options.length > 0) {
-        const grouped = item.order_item_options.reduce((acc: any, curr: any) => {
-          if (!acc[curr.value_label]) acc[curr.value_label] = 0
-          acc[curr.value_label] += 1
-          return acc
-        }, {})
-        const opts = Object.entries(grouped).map(([label, qty]) => (qty as number) > 1 ? `${qty}x ${label}` : label).join(', ')
-        receiptData += `  * ${opts}\n`
+        // Filter archived dan group by option_name
+        const filtered = item.order_item_options.filter((o: any) => !o.option_name?.startsWith('[ARCHIVED]'))
+        const grouped: Record<string, string[]> = {}
+        const groupOrder: string[] = []
+        filtered.forEach((o: any) => {
+          const name = o.option_name || ''
+          if (!grouped[name]) { grouped[name] = []; groupOrder.push(name) }
+          grouped[name].push(o.value_label)
+        })
+        // Prioritas urut: Jenis Ayam/Pilihan Bagian dulu, baru Pilihan Sambal, lalu lainnya
+        const priority = ['Jenis Ayam', 'Pilihan Bagian', 'Pilihan Sambal', 'Bumbu', 'Penyajian', 'Jukut Goreng']
+        const sortedKeys = [...groupOrder].sort((a, b) => {
+          const ai = priority.indexOf(a); const bi = priority.indexOf(b)
+          return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
+        })
+        sortedKeys.forEach((optName) => {
+          const labels = grouped[optName]
+          if (labels && labels.length > 0) {
+            receiptData += `  * ${labels.join(', ')}\n`
+          }
+        })
       }
     })
     
