@@ -1,3 +1,6 @@
+if (!process.env.ADMIN_PIN_SECRET) {
+  console.warn('[SECURITY WARNING] ADMIN_PIN_SECRET is not set in environment variables. Using default fallback secret.')
+}
 const ADMIN_PIN_SECRET = process.env.ADMIN_PIN_SECRET ?? 'kalintang-admin-secret'
 const COOKIE_MAX_AGE = 60 * 60 * 12 // 12 hours
 
