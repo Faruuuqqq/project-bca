@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 /**
  * Get payment history with aggregated statistics
  */
+import { requireAdminAuth } from '@/lib/admin-auth'
 import { getTestOrderIds } from './testMode'
 import { checkIsTestOrder } from '@/lib/testOrder'
 
@@ -12,6 +13,7 @@ import { checkIsTestOrder } from '@/lib/testOrder'
  * Get payment history with aggregated statistics
  */
 export async function getPaymentHistory(limit: number = 100, offset: number = 0) {
+  await requireAdminAuth()
   const supabase = await createClient()
   const testOrderIds = await getTestOrderIds()
   const testIdsSet = new Set(testOrderIds)
@@ -40,6 +42,7 @@ export async function getPaymentHistory(limit: number = 100, offset: number = 0)
  * Get payment statistics (cash vs QRIS, success rate, etc)
  */
 export async function getPaymentStatistics(dateFrom?: string, dateTo?: string) {
+  await requireAdminAuth()
   const supabase = await createClient()
   const testOrderIds = await getTestOrderIds()
   const testIdsSet = new Set(testOrderIds)
@@ -88,6 +91,7 @@ export async function getPaymentStatistics(dateFrom?: string, dateTo?: string) {
  * Get menu sales statistics
  */
 export async function getMenuSalesHistory(limit: number = 100, offset: number = 0) {
+  await requireAdminAuth()
   const supabase = await createClient()
 
   const { data, error, count } = await supabase
@@ -139,6 +143,7 @@ export async function getMenuSalesHistory(limit: number = 100, offset: number = 
  * Get top selling menu items
  */
 export async function getTopSellingMenus(days: number = 30, limit: number = 10) {
+  await requireAdminAuth()
   const supabase = await createClient()
   const dateFrom = new Date()
   dateFrom.setDate(dateFrom.getDate() - days)

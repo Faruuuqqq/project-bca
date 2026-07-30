@@ -2,10 +2,12 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { requireAdminAuth } from '@/lib/admin-auth'
 
 // --- IMAGE UPLOAD ---
 
 export async function uploadMenuImage(formData: FormData): Promise<string> {
+  await requireAdminAuth()
   const supabase = createAdminClient()
   const file = formData.get('file') as File
 
@@ -47,6 +49,7 @@ export async function uploadMenuImage(formData: FormData): Promise<string> {
 }
 
 export async function deleteMenuImage(imageUrl: string) {
+  await requireAdminAuth()
   const supabase = createAdminClient()
 
   // Extract file path from URL
@@ -60,6 +63,7 @@ export async function deleteMenuImage(imageUrl: string) {
 // --- CATEGORIES ---
 
 export async function createCategory(formData: FormData) {
+  await requireAdminAuth()
   const supabase = createAdminClient()
   const name = formData.get('name') as string
   
@@ -82,6 +86,7 @@ export async function createCategory(formData: FormData) {
 }
 
 export async function updateCategory(id: string, formData: FormData) {
+  await requireAdminAuth()
   const supabase = createAdminClient()
   const name = formData.get('name') as string
 
@@ -97,6 +102,7 @@ export async function updateCategory(id: string, formData: FormData) {
 }
 
 export async function swapCategoryOrder(id1: string, order1: number, id2: string, order2: number) {
+  await requireAdminAuth()
   const supabase = createAdminClient()
   
   const { error: error1 } = await supabase.from('categories').update({ sort_order: order2 }).eq('id', id1)
@@ -110,6 +116,7 @@ export async function swapCategoryOrder(id1: string, order1: number, id2: string
 }
 
 export async function deleteCategory(id: string) {
+  await requireAdminAuth()
   const supabase = createAdminClient()
   const { error } = await supabase
     .from('categories')
@@ -125,6 +132,7 @@ export async function deleteCategory(id: string) {
 // --- MENUS ---
 
 export async function createMenu(formData: FormData) {
+  await requireAdminAuth()
   const supabase = createAdminClient()
 
   const imageUrl = formData.get('image_url') as string
@@ -135,7 +143,7 @@ export async function createMenu(formData: FormData) {
     price: parseFloat(formData.get('price') as string),
     cost_price: parseFloat((formData.get('cost_price') as string) || '0'),
     description: formData.get('description') as string,
-    image_url: imageUrl || null, // FIX BUG: Empty string instead of null
+    image_url: imageUrl || null,
     is_sold_out: formData.get('is_sold_out') === 'on',
   }
 
@@ -150,6 +158,7 @@ export async function createMenu(formData: FormData) {
 }
 
 export async function updateMenu(id: string, formData: FormData) {
+  await requireAdminAuth()
   const supabase = createAdminClient()
 
   const imageUrl = formData.get('image_url') as string
@@ -160,7 +169,7 @@ export async function updateMenu(id: string, formData: FormData) {
     price: parseFloat(formData.get('price') as string),
     cost_price: parseFloat((formData.get('cost_price') as string) || '0'),
     description: formData.get('description') as string,
-    image_url: imageUrl || null, // FIX BUG: Empty string instead of null
+    image_url: imageUrl || null,
     is_sold_out: formData.get('is_sold_out') === 'on',
   }
 
@@ -176,6 +185,7 @@ export async function updateMenu(id: string, formData: FormData) {
 }
 
 export async function deleteMenu(id: string) {
+  await requireAdminAuth()
   const supabase = createAdminClient()
   
   // Clean up related menu options to prevent FK constraint error if cascade is missing
@@ -198,6 +208,7 @@ export async function deleteMenu(id: string) {
 }
 
 export async function toggleSoldOut(menuId: string, value: boolean) {
+  await requireAdminAuth()
   const supabase = createAdminClient()
    
    const { error } = await supabase
@@ -212,14 +223,10 @@ export async function toggleSoldOut(menuId: string, value: boolean) {
    return { success: true }
 }
 
-/**
- * Toggle menu sold out status (quick action for admin)
- * Gets current state, toggles it, and updates
- */
 export async function toggleMenuSoldOut(menuId: string) {
+  await requireAdminAuth()
   const supabase = createAdminClient()
   
-  // Get current state
   const { data: menu, error: fetchError } = await supabase
     .from('menus')
     .select('is_sold_out')
@@ -229,7 +236,6 @@ export async function toggleMenuSoldOut(menuId: string) {
   if (fetchError) throw new Error(fetchError.message)
   if (!menu) throw new Error('Menu tidak ditemukan')
   
-  // Toggle the state
   const newState = !menu.is_sold_out
   
   const { error: updateError } = await supabase

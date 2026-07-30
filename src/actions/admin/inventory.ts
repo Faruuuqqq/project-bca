@@ -5,10 +5,13 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
+import { requireAdminAuth } from '@/lib/admin-auth'
+
 /**
  * Adjust stock for a menu item (+ or -)
  */
 export async function adjustStock(menuId: string, amount: number, reason: string) {
+  await requireAdminAuth()
   const supabase = createAdminClient()
 
   const { data: menu, error: fetchError } = await supabase
@@ -62,6 +65,7 @@ export async function adjustStock(menuId: string, amount: number, reason: string
 }
 
 export async function getInventoryHistory(limit: number = 20, offset: number = 0) {
+  await requireAdminAuth()
   const supabase = await createClient()
   const { data, error, count } = await supabase
     .from('inventory_movements')
@@ -128,6 +132,7 @@ export async function createStockAlert(
 }
 
 export async function dismissStockAlert(alertId: string) {
+  await requireAdminAuth()
   const supabase = createAdminClient()
   
   const { error } = await supabase
@@ -144,6 +149,7 @@ export async function dismissStockAlert(alertId: string) {
 }
 
 export async function updateStockThreshold(menuId: string, threshold: number) {
+  await requireAdminAuth()
   const supabase = createAdminClient()
   
   if (threshold < 0) throw new Error('Threshold tidak boleh negatif')
@@ -209,6 +215,7 @@ export async function checkAndTriggerStockAlerts(menuId: string) {
  * daily_stock = 0 means "no daily reset" for this item.
  */
 export async function updateDailyStock(menuId: string, dailyStock: number) {
+  await requireAdminAuth()
   const supabase = createAdminClient()
 
   const { error } = await supabase
@@ -227,6 +234,7 @@ export async function updateDailyStock(menuId: string, dailyStock: number) {
  * Logs each reset as an inventory_movement for audit trail.
  */
 export async function resetDailyStock() {
+  await requireAdminAuth()
   const supabase = createAdminClient()
 
   const { data: menus, error: fetchError } = await supabase
