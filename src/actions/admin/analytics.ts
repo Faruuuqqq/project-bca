@@ -62,6 +62,7 @@ type OrderItemRow = {
   menu_name: string
   quantity: number
   menu_price: number
+  subtotal: number
   menus: { cost_price: number | null } | null
 }
 
@@ -95,7 +96,7 @@ async function fetchOrderItems(
   if (orderIds.length === 0) return []
   const { data } = await supabase
     .from('order_items')
-    .select('menu_name, quantity, menu_price, menus(cost_price)')
+    .select('menu_name, quantity, menu_price, subtotal, menus(cost_price)')
     .in('order_id', orderIds)
 
   return (data ?? []) as unknown as OrderItemRow[]
@@ -142,10 +143,11 @@ export async function getDashboardStats(
   const orderCount = currentOrders.length
   const aov = orderCount > 0 ? revenue / orderCount : 0
 
+  // Calculate gross profit using full item subtotal (which includes add-on options) minus HPP
   const grossProfit = currentItems.reduce((sum, item) => {
-    const cost = Number(item.menus?.cost_price ?? 0)
-    const margin = Number(item.menu_price) - cost
-    return sum + margin * Number(item.quantity)
+    const cost = Number(item.menus?.cost_price ?? 0) * Number(item.quantity)
+    const itemRevenue = Number(item.subtotal ?? (Number(item.menu_price) * Number(item.quantity)))
+    return sum + (itemRevenue - cost)
   }, 0)
   const grossMarginPct = revenue > 0 ? (grossProfit / revenue) * 100 : 0
 
