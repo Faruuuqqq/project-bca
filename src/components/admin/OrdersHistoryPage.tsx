@@ -41,6 +41,8 @@ interface Order {
   payment_status: 'paid' | 'unpaid'
   order_status: string
   created_at: string
+  customer_name?: string | null
+  is_test?: boolean
   order_items?: OrderItem[]
 }
 
@@ -57,6 +59,9 @@ interface OrdersHistoryPageProps {
 }
 
 import { resetRevenueRecap } from '@/actions/admin/orders'
+import { toggleTestOrder } from '@/actions/admin/testMode'
+import { FlaskConical } from 'lucide-react'
+
 export default function OrdersHistoryPage({
   initialOrders,
   currentPage,
@@ -82,6 +87,26 @@ export default function OrdersHistoryPage({
   const [isExporting, setIsExporting] = useState(false)
   const [isPrinting, setIsPrinting] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
+  const [isTogglingTest, setIsTogglingTest] = useState(false)
+
+  const handleToggleTest = async (orderId: string, currentIsTest?: boolean) => {
+    setIsTogglingTest(true)
+    const toastId = toast.loading('Memperbarui status test order...')
+    try {
+      const res = await toggleTestOrder(orderId, !currentIsTest)
+      if (res.success) {
+        toast.success(res.isTest ? 'Pesanan ditandai sebagai TEST' : 'Tag TEST dihapus dari pesanan', { id: toastId })
+        if (selectedOrder && selectedOrder.id === orderId) {
+          setSelectedOrder(prev => prev ? { ...prev, is_test: res.isTest } : null)
+        }
+        router.refresh()
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengubah status test', { id: toastId })
+    } finally {
+      setIsTogglingTest(false)
+    }
+  }
 
   const handleResetRecap = async () => {
     if (confirm('Yakin ingin mereset angka rekap pendapatan? Angka akan dihitung ulang dari waktu sekarang (riwayat pesanan lama tidak akan dihapus).')) {
@@ -270,6 +295,7 @@ export default function OrdersHistoryPage({
             <option value="pending">Diproses</option>
             <option value="completed">Selesai</option>
             <option value="unpaid">Belum Bayar</option>
+            <option value="test">Hanya Pesanan Test [TEST]</option>
           </select>
           <select
             value={paymentFilter}
@@ -338,8 +364,17 @@ export default function OrdersHistoryPage({
                   const itemCount = order.order_items?.length || 0
 
                   return (
-                    <tr key={order.id} className="border-b border-border hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 whitespace-nowrap"><span className="text-xs font-mono font-semibold">{order.id.slice(0, 8)}</span></td>
+                    <tr key={order.id} className={cn("border-b border-border hover:bg-muted/30 transition-colors", order.is_test && "bg-purple-50/40 hover:bg-purple-50/70")}>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-mono font-semibold">{order.id.slice(0, 8)}</span>
+                          {order.is_test && (
+                            <Badge className="bg-purple-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded">
+                              TEST
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-sm whitespace-nowrap"><span className="text-muted-foreground">{itemCount} item</span></td>
                       <td className="px-4 py-3 text-sm font-semibold whitespace-nowrap">{formatRupiah(order.total_price)}</td>
                       <td className="px-4 py-3 whitespace-nowrap"><Badge className={cn('text-xs border-none', orderTypeBadge.color)}>{orderTypeBadge.label}</Badge></td>
@@ -380,7 +415,14 @@ export default function OrdersHistoryPage({
       <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
         <DialogContent className="sm:max-w-md bg-white rounded-2xl overflow-hidden p-0 border-border" showCloseButton={false}>
           <DialogHeader className="p-6 border-b border-border bg-muted/20">
-            <DialogTitle className="text-xl">Detail Pesanan <span className="font-mono text-brand-primary">#{selectedOrder?.id.slice(0, 8)}</span></DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl">Detail Pesanan <span className="font-mono text-brand-primary">#{selectedOrder?.id.slice(0, 8)}</span></DialogTitle>
+              {selectedOrder?.is_test && (
+                <Badge className="bg-purple-600 text-white font-black text-xs px-2 py-0.5 rounded-md">
+                  TEST ORDER
+                </Badge>
+              )}
+            </div>
           </DialogHeader>
           <div className="p-6 space-y-5">
             <div className="flex justify-between items-center text-sm">
@@ -436,16 +478,32 @@ export default function OrdersHistoryPage({
             </div>
           </div>
           <DialogFooter className="p-6 bg-muted/20 border-t border-border flex-col sm:flex-row gap-3 sm:gap-2">
-            <Button variant="outline" onClick={() => setSelectedOrder(null)} className="w-full sm:w-1/2 rounded-xl h-11 font-semibold">
+            <Button variant="outline" onClick={() => setSelectedOrder(null)} className="w-full sm:w-1/3 rounded-xl h-11 font-semibold">
               TUTUP
             </Button>
+
+            {selectedOrder && (
+              <Button
+                variant="outline"
+                disabled={isTogglingTest}
+                onClick={() => handleToggleTest(selectedOrder.id, selectedOrder.is_test)}
+                className={cn(
+                  "w-full sm:w-1/3 rounded-xl h-11 font-bold border-purple-300 text-purple-700 hover:bg-purple-50",
+                  selectedOrder.is_test && "border-amber-300 text-amber-700 hover:bg-amber-50"
+                )}
+              >
+                <FlaskConical className="w-4 h-4 mr-1.5" />
+                {selectedOrder.is_test ? 'Batal Test' : 'Mark Test'}
+              </Button>
+            )}
+
             <Button 
               onClick={() => selectedOrder && handleReprintReceipt(selectedOrder.id)} 
               disabled={isPrinting}
-              className="w-full sm:w-1/2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-11 font-bold shadow-sm"
+              className="w-full sm:w-1/3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-11 font-bold shadow-sm"
             >
-              <Printer className="w-4 h-4 mr-2" />
-              CETAK STRUK
+              <Printer className="w-4 h-4 mr-1.5" />
+              STRUK
             </Button>
           </DialogFooter>
         </DialogContent>

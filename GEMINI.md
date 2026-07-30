@@ -1,4 +1,4 @@
-# GEMINI.md - Project Context & Instructions
+p# GEMINI.md - Project Context & Instructions
 
 ## Project Overview
 **SOK Ayam Kalintang** is a Self-Order Kiosk application designed for a restaurant. The goal is to provide a seamless ordering experience for customers (Dine-In/Take-Away) and an efficient, data-rich management board for owners and cashiers. The project has reached **v2.5 (Enterprise-Grade)**.
