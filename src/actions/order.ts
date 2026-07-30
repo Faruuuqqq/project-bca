@@ -142,7 +142,7 @@ export async function createOrder(data: {
         total_price: calculatedTotalPrice,
         payment_method: data.paymentMethod,
         customer_name: data.customerName || null,
-        payment_status: data.paymentMethod === 'CASH' ? 'paid' : 'unpaid',
+        payment_status: 'unpaid', // ALWAYS unpaid until cashier PIN confirmation or Midtrans webhook
         order_status: 'pending',
       })
       .select('id, total_price, queue_number')
