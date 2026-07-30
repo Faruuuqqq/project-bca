@@ -2,11 +2,21 @@
 
 import { cookies } from 'next/headers'
 import { signToken, ADMIN_COOKIE_NAME, ADMIN_COOKIE_MAX_AGE } from '@/lib/admin-auth'
-
-const ADMIN_PIN = process.env.ADMIN_PIN ?? '1234'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function verifyAdminPin(pin: string): Promise<{ success: boolean }> {
-  if (pin !== ADMIN_PIN) {
+  const supabase = createAdminClient()
+  
+  // Ambil cashier_pin dari database store_configs (konsisten dengan confirmCashPayment & voidOrder)
+  const { data: config } = await supabase
+    .from('store_configs')
+    .select('config_value')
+    .eq('config_key', 'cashier_pin')
+    .single()
+
+  const validPin = config?.config_value ?? process.env.ADMIN_PIN ?? '1234'
+
+  if (pin !== validPin) {
     return { success: false }
   }
 
