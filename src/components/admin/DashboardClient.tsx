@@ -16,6 +16,7 @@ import {
   Warehouse,
   TrendingUp,
   Minus,
+  FlaskConical,
 } from 'lucide-react'
 import { cn, formatRupiah, formatDate } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -57,6 +58,9 @@ export default function DashboardClient({ stats }: { stats: DashboardStats }) {
             <h1 className={adminTokens.pageTitle}>Ringkasan Bisnis</h1>
             <Badge className="bg-brand-primary text-white text-xs px-2 py-0.5 font-bold rounded-md">
               LIVE
+            </Badge>
+            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs px-2 py-0.5 font-semibold rounded-md flex items-center gap-1">
+              <FlaskConical size={12} /> Exclude Test Orders
             </Badge>
           </div>
           <div className="flex items-center gap-2 mt-1">

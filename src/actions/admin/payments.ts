@@ -5,13 +5,21 @@ import { createClient } from '@/lib/supabase/server'
 /**
  * Get payment history with aggregated statistics
  */
+import { getTestOrderIds } from './testMode'
+import { checkIsTestOrder } from '@/lib/testOrder'
+
+/**
+ * Get payment history with aggregated statistics
+ */
 export async function getPaymentHistory(limit: number = 100, offset: number = 0) {
   const supabase = await createClient()
+  const testOrderIds = await getTestOrderIds()
+  const testIdsSet = new Set(testOrderIds)
   
   const { data, error, count } = await supabase
     .from('orders')
     .select(
-      'id, total_price, payment_method, payment_status, order_type, created_at, order_items(menu_name, quantity, menu_price)',
+      'id, total_price, payment_method, payment_status, order_type, created_at, customer_name, order_items(menu_name, quantity, menu_price)',
       { count: 'exact' }
     )
     .eq('payment_status', 'paid')
@@ -19,7 +27,13 @@ export async function getPaymentHistory(limit: number = 100, offset: number = 0)
     .range(offset, offset + limit - 1)
 
   if (error) throw new Error(error.message)
-  return { payments: data, total: count }
+  
+  const payments = data?.map(p => ({
+    ...p,
+    is_test: checkIsTestOrder(p, testIdsSet)
+  }))
+
+  return { payments, total: count }
 }
 
 /**
@@ -27,10 +41,12 @@ export async function getPaymentHistory(limit: number = 100, offset: number = 0)
  */
 export async function getPaymentStatistics(dateFrom?: string, dateTo?: string) {
   const supabase = await createClient()
+  const testOrderIds = await getTestOrderIds()
+  const testIdsSet = new Set(testOrderIds)
   
   let query = supabase
     .from('orders')
-    .select('total_price, payment_method, payment_status')
+    .select('id, total_price, payment_method, payment_status, customer_name')
     .eq('payment_status', 'paid')
 
   if (dateFrom) {
@@ -53,6 +69,8 @@ export async function getPaymentStatistics(dateFrom?: string, dateTo?: string) {
   }
 
   data?.forEach((order) => {
+    if (checkIsTestOrder(order, testIdsSet)) return // Exclude test orders
+
     stats.totalRevenue += order.total_price || 0
     if (order.payment_method === 'QRIS') {
       stats.qrisRevenue += order.total_price || 0

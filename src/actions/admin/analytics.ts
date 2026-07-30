@@ -65,19 +65,27 @@ type OrderItemRow = {
   menus: { cost_price: number | null } | null
 }
 
+import { getTestOrderIds } from './testMode'
+import { checkIsTestOrder } from '@/lib/testOrder'
+
 async function fetchPaidOrders(
   supabase: Awaited<ReturnType<typeof createClient>>,
   start: Date,
-  end: Date
+  end: Date,
+  testIdsSet?: Set<string>
 ): Promise<OrderRow[]> {
   const { data } = await supabase
     .from('orders')
-    .select('id, total_price, order_type, payment_method, created_at')
+    .select('id, total_price, order_type, payment_method, created_at, customer_name')
     .eq('payment_status', 'paid')
     .gte('created_at', start.toISOString())
     .lte('created_at', end.toISOString())
 
-  return (data ?? []) as OrderRow[]
+  const rawOrders = (data ?? []) as (OrderRow & { customer_name?: string | null })[]
+  if (!testIdsSet) return rawOrders as OrderRow[]
+
+  // Filter out test orders
+  return rawOrders.filter(o => !checkIsTestOrder(o, testIdsSet)) as OrderRow[]
 }
 
 async function fetchOrderItems(
@@ -113,10 +121,13 @@ export async function getDashboardStats(
     }
   }
 
+  const testOrderIds = await getTestOrderIds()
+  const testIdsSet = new Set(testOrderIds)
+
   const [currentOrders, previousOrders, weeklyOrders] = await Promise.all([
-    fetchPaidOrders(supabase, win.start, win.end),
-    fetchPaidOrders(supabase, win.prevStart, win.prevEnd),
-    weeklyWindow ? fetchPaidOrders(supabase, weeklyWindow.start, weeklyWindow.end) : Promise.resolve([]),
+    fetchPaidOrders(supabase, win.start, win.end, testIdsSet),
+    fetchPaidOrders(supabase, win.prevStart, win.prevEnd, testIdsSet),
+    weeklyWindow ? fetchPaidOrders(supabase, weeklyWindow.start, weeklyWindow.end, testIdsSet) : Promise.resolve([]),
   ])
 
   const currentItems = await fetchOrderItems(
