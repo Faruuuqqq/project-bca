@@ -101,9 +101,12 @@ async function fetchOrderItems(
   return (data ?? []) as unknown as OrderItemRow[]
 }
 
+import { requireAdminAuth } from '@/lib/admin-auth'
+
 export async function getDashboardStats(
   range: DashboardRange = 'today'
 ): Promise<DashboardStats> {
+  await requireAdminAuth()
   const supabase = await createClient()
   const win = rangeWindow(range)
 

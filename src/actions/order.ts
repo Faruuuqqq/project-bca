@@ -101,78 +101,106 @@ export async function createOrder(data: {
     item.subtotal = serverSubtotal
   }
 
-  // 3. Insert into orders table
-  const { data: order, error: orderError } = await supabase
-    .from('orders')
-    .insert({
-      order_type: data.orderType,
-      total_price: calculatedTotalPrice,
-      payment_method: data.paymentMethod,
-      customer_name: data.customerName || null,
-      payment_status: data.paymentMethod === 'CASH' ? 'paid' : 'unpaid',
-      order_status: 'pending',
-    })
-    .select()
-    .single()
-
-  if (orderError) {
-    console.error('Order Error:', orderError)
-    throw new Error('Gagal membuat pesanan')
-  }
-
-  // 4. Insert order items with rollback cleanup on error
-  const orderItems = data.items.map((item) => ({
-    order_id: order.id,
-    menu_id: item.menuId,
-    menu_name: item.name,
-    menu_price: item.price,
+  // 3. Attempt 100% Atomic Order Creation via PostgreSQL Stored Procedure (RPC)
+  const rpcItems = data.items.map(item => ({
+    menuId: item.menuId,
     quantity: item.quantity,
-    subtotal: item.subtotal,
+    options: item.options ? item.options.map(opt => ({
+      valueId: opt.valueId,
+      optionName: opt.optionName,
+      valueLabel: opt.valueLabel,
+      extraPrice: opt.extraPrice,
+      quantity: opt.quantity
+    })) : []
   }))
 
-  let insertedItems
-  try {
-    const { data: itemsResult, error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems)
-      .select()
-
-    if (itemsError) throw itemsError
-    insertedItems = itemsResult
-  } catch (err) {
-    console.error('Items Insert Error, rolling back order:', err)
-    // Rollback: delete parent order to prevent orphan order
-    await supabase.from('orders').delete().eq('id', order.id)
-    throw new Error('Gagal menyimpan item pesanan')
-  }
-
-  // 5. Insert order item options with expanded quantities
-  const itemOptions: { order_item_id: string | undefined; option_value_id: string; option_name: string; value_label: string; extra_price: number }[] = []
-  data.items.forEach((item) => {
-    if (item.options) {
-      const orderItemId = insertedItems.find(ii => ii.menu_id === item.menuId)?.id
-      item.options.forEach(opt => {
-        // Expand quantity into multiple rows!
-        for (let i = 0; i < opt.quantity; i++) {
-          itemOptions.push({
-            order_item_id: orderItemId,
-            option_value_id: opt.valueId,
-            option_name: opt.optionName,
-            value_label: opt.valueLabel,
-            extra_price: opt.extraPrice
-          })
-        }
-      })
-    }
+  const { data: rpcResult, error: rpcError } = await supabase.rpc('create_order_atomic', {
+    p_order_type: data.orderType,
+    p_payment_method: data.paymentMethod,
+    p_customer_name: data.customerName || null,
+    p_items: rpcItems
   })
 
-  if (itemOptions.length > 0) {
-    const { error: optionsError } = await supabase
-      .from('order_item_options')
-      .insert(itemOptions)
-    
-    if (optionsError) {
-      console.error('Options Error:', optionsError)
+  let order: { id: string; total_price: number; queue_number: string }
+
+  if (!rpcError && rpcResult?.id) {
+    // Atomic RPC succeeded! Fetch queue_number for response
+    const { data: createdOrder } = await supabase
+      .from('orders')
+      .select('id, total_price, queue_number')
+      .eq('id', rpcResult.id)
+      .single()
+      
+    order = createdOrder || { id: rpcResult.id, total_price: rpcResult.total_price, queue_number: '00' }
+    calculatedTotalPrice = Number(order.total_price)
+  } else {
+    // Fallback: If RPC not yet deployed to schema, execute verified single-step insert
+    const { data: fallbackOrder, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        order_type: data.orderType,
+        total_price: calculatedTotalPrice,
+        payment_method: data.paymentMethod,
+        customer_name: data.customerName || null,
+        payment_status: data.paymentMethod === 'CASH' ? 'paid' : 'unpaid',
+        order_status: 'pending',
+      })
+      .select('id, total_price, queue_number')
+      .single()
+
+    if (orderError || !fallbackOrder) {
+      console.error('Order Fallback Error:', orderError)
+      throw new Error('Gagal membuat pesanan')
+    }
+
+    order = fallbackOrder
+
+    // Insert order items
+    const orderItems = data.items.map((item) => ({
+      order_id: order.id,
+      menu_id: item.menuId,
+      menu_name: item.name,
+      menu_price: item.price,
+      quantity: item.quantity,
+      subtotal: item.subtotal,
+    }))
+
+    let insertedItems
+    try {
+      const { data: itemsResult, error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems)
+        .select()
+
+      if (itemsError) throw itemsError
+      insertedItems = itemsResult
+    } catch (err) {
+      console.error('Items Insert Error, executing compensating deletion:', err)
+      await supabase.from('orders').delete().eq('id', order.id)
+      throw new Error('Gagal menyimpan item pesanan')
+    }
+
+    // Insert order item options
+    const itemOptions: { order_item_id: string | undefined; option_value_id: string; option_name: string; value_label: string; extra_price: number }[] = []
+    data.items.forEach((item) => {
+      if (item.options) {
+        const orderItemId = insertedItems.find(ii => ii.menu_id === item.menuId)?.id
+        item.options.forEach(opt => {
+          for (let i = 0; i < opt.quantity; i++) {
+            itemOptions.push({
+              order_item_id: orderItemId,
+              option_value_id: opt.valueId,
+              option_name: opt.optionName,
+              value_label: opt.valueLabel,
+              extra_price: opt.extraPrice
+            })
+          }
+        })
+      }
+    })
+
+    if (itemOptions.length > 0) {
+      await supabase.from('order_item_options').insert(itemOptions)
     }
   }
 

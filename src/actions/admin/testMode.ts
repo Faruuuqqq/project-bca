@@ -25,10 +25,13 @@ export async function getTestOrderIds(): Promise<string[]> {
   return []
 }
 
+import { requireAdminAuth } from '@/lib/admin-auth'
+
 /**
  * Menandai / Mengubah status pesanan sebagai test order
  */
 export async function toggleTestOrder(orderId: string, forceState?: boolean) {
+  await requireAdminAuth()
   const supabase = createAdminClient()
 
   // 1. Ambil daftar ID test yang ada

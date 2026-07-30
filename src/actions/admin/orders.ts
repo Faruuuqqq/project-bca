@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 
 import { getTestOrderIds } from './testMode'
+import { requireAdminAuth } from '@/lib/admin-auth'
 import { checkIsTestOrder } from '@/lib/testOrder'
 
 export async function getOrdersHistory(
@@ -19,6 +20,7 @@ export async function getOrdersHistory(
     hideTest?: boolean
   }
 ) {
+  await requireAdminAuth()
   const supabase = await createClient()
   const testOrderIds = await getTestOrderIds()
   const testIdsSet = new Set(testOrderIds)
@@ -131,6 +133,7 @@ export async function exportOrdersCSV(filters?: {
   dateFrom?: string
   dateTo?: string
 }) {
+  await requireAdminAuth()
   const supabase = await createClient()
   const testOrderIds = await getTestOrderIds()
   const testIdsSet = new Set(testOrderIds)
@@ -205,6 +208,7 @@ export async function exportOrdersCSV(filters?: {
 
 
 export async function resetRevenueRecap() {
+  await requireAdminAuth()
   const supabase = createAdminClient()
   const { error } = await supabase
     .from('store_configs')
